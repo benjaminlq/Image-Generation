@@ -4,7 +4,6 @@
 from pathlib import Path
 from typing import Union
 
-from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import config
@@ -18,6 +17,7 @@ class MNISTDataLoader(BaseDataLoader):
         self,
         data_path: Union[str, Path] = config.DATA_PATH,
         batch_size: int = 32,
+        std_normalize: bool = False,
     ):
         """MNIST Data Module
 
@@ -27,17 +27,22 @@ class MNISTDataLoader(BaseDataLoader):
         """
         super(MNISTDataLoader, self).__init__(data_path, batch_size)
 
-        train_transform = transforms.Compose(
-            [
-                transforms.RandomCrop(28, padding=4),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=0.5, std=0.5),
-            ]
-        )
-
-        test_transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=0.5, std=0.5)]
-        )
+        if std_normalize:
+            train_transform = transforms.Compose([
+                    transforms.RandomCrop(28, padding = 4),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=0.5, std=0.5)
+                ])
+            test_transform = transforms.Compose([transforms.ToTensor(),
+                                                transforms.Normalize(mean=0.5, std=0.5)
+                                                ])
+        else:
+            train_transform = transforms.Compose([
+                    transforms.RandomCrop(28, padding = 4),
+                    transforms.ToTensor(),
+                ])
+            test_transform = transforms.Compose([transforms.ToTensor(),
+                                                ])
 
         self.train_dataset = datasets.MNIST(
             data_path, download=True, train=True, transform=train_transform
