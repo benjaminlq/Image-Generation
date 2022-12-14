@@ -19,10 +19,16 @@ LEARNING_RATE = 1e-4
 EPS = 1e-8
 BATCH_SIZE = 32
 CLIP = 1.5
-ALPHA = 1000.
+ALPHA = 1000.0
 
 ### Model Params
-MODEL_PARAMS = {"VAE": {}, "Cond_VAE": {}, "GAN": {}, "Cond_GAN": {}}
+MODEL_PARAMS = {
+    "BaseVAE": {},
+    "DeepVAE": {},
+    "ConvVAE": {"kernel_size": 3},
+    "GAN": {},
+    "Cond_GAN": {},
+}
 
 ### Logging configurations
 LOGGER = logging.getLogger(__name__)
