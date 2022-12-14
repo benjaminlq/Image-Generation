@@ -20,7 +20,7 @@ class BaseVAE(nn.Module):
         input_size: tuple = (1, 28, 28),
         common_size: int = 400,
         hidden_size: int = 128,
-        activation: Literal["Tanh","Sigmoid"] = "Tanh",
+        activation: Literal["Tanh","Sigmoid"] = "Sigmoid",
     ):
         """Based VAE Model
 
@@ -40,13 +40,12 @@ class BaseVAE(nn.Module):
         self.mean_fc = nn.Linear(common_size, hidden_size)
         self.var_fc = nn.Linear(common_size, hidden_size)
         
-        self.encoder = nn.Sequential(nn.Flatten(), nn.Linear(self.c * self.h * self.w, common_size))
-        self.decoder = nn.Sequential(nn.Linear(hidden_size, common_size), nn.ReLU(),
-                                     nn.Linear(common_size, self.c * self.h * self.w))
+        self.encoder = nn.Sequential(nn.Flatten(), nn.Linear(self.c * self.h * self.w, common_size), nn.BatchNorm1d(common_size), nn.LeakyReLU(0.1))
+        self.decoder = nn.Sequential(nn.Linear(hidden_size, common_size), nn.BatchNorm1d(common_size), nn.LeakyReLU(0.1), nn.Linear(common_size, self.c * self.h * self.w))
         
         self.activation = getattr(nn, activation)()
 
-    def encode(self, flattened_inputs: torch.tensor) -> torch.tensor:
+    def encode(self, inputs: torch.tensor) -> torch.tensor:
         """Encoder converts input images to probability distribution (Gaussian) of latent vectors P(z|x)
 
         Args:
@@ -55,7 +54,7 @@ class BaseVAE(nn.Module):
         Returns:
             torch.tensor: Mean and Diagonal Covariance Matrix of Gaussian describing the probability P(z|x)
         """
-        x = F.relu(self.encoder(flattened_inputs))
+        x = self.encoder(inputs)
         mu = self.mean_fc(x)
         log_var = self.var_fc(x)
         return mu, log_var
@@ -117,7 +116,7 @@ class DeepVAE(BaseVAE):
         input_size: tuple = (1, 28, 28),
         common_size: int = 128,
         hidden_size: int = 128,
-        activation: Literal["Tanh","Sigmoid"] = "Tanh",
+        activation: Literal["Tanh","Sigmoid"] = "Sigmoid",
     ):
         """Deep VAE Model
 
@@ -135,12 +134,11 @@ class DeepVAE(BaseVAE):
             nn.Linear(self.c * self.h * self.w, 784), nn.BatchNorm1d(784), nn.LeakyReLU(0.1),
             nn.Linear(784, 392), nn.BatchNorm1d(392), nn.LeakyReLU(0.1),
             nn.Linear(392, 196), nn.BatchNorm1d(196), nn.LeakyReLU(0.1),
-            nn.Linear(196, 128), nn.BatchNorm1d(128), nn.LeakyReLU(0.1),
-            nn.Linear(128, hidden_size)
+            nn.Linear(196, self.common_size), nn.BatchNorm1d(128)
         )
         
         self.decoder = nn.Sequential(
-            nn.Linear(hidden_size, 128), nn.BatchNorm1d(128), nn.LeakyReLU(0.1),
+            nn.Linear(self.hidden_size, 128), nn.BatchNorm1d(128), nn.LeakyReLU(0.1),
             nn.Linear(128, 196), nn.BatchNorm1d(196), nn.LeakyReLU(0.1),
             nn.Linear(196, 392), nn.BatchNorm1d(392), nn.LeakyReLU(0.1),
             nn.Linear(392, 784), nn.BatchNorm1d(784), nn.LeakyReLU(0.1),
@@ -158,7 +156,7 @@ class ConvVAE(BaseVAE):
         input_size: tuple = (1, 28, 28),
         common_size: int = 128,
         hidden_size: int = 128,
-        activation: Literal["Tanh","Sigmoid"] = "Tanh",
+        activation: Literal["Tanh","Sigmoid"] = "Sigmoid",
         kernel_size: int = 3,
     ):
         """Deep VAE Model with Convolutional Encoder and Decoder
@@ -177,14 +175,17 @@ class ConvVAE(BaseVAE):
         self.padding = kernel_size // 2
         
         self.encoder = nn.Sequential(
-            nn.Conv2d(self.c, 16, kernel_size = self.kernel_size, padding=self.padding), nn.BatchNorm2d(64), nn.ReLU(),
-            
+            nn.Conv2d(self.c, 16, kernel_size = self.kernel_size, padding=self.padding), nn.BatchNorm2d(16), nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size = self.kernel_size, padding=self.padding), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size = self.kernel_size, padding=self.padding), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.MaxPool2d(2),
         )
 
 if __name__ == "__main__":
-    sample = torch.rand(5, 3, 28, 28)
+    sample = torch.rand(5, 3, 224, 224)
     c, h, w = sample.size(1), sample.size(2), sample.size(3) 
-    vae_model = DeepVAE(input_size = (c, h, w))
+    vae_model = BaseVAE(input_size = (c, h, w))
     out, mu, log_var = vae_model(sample)
     print(out.size())
     print(mu.size())
