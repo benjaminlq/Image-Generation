@@ -18,6 +18,8 @@ EPOCHS = 20
 LEARNING_RATE = 1e-4
 EPS = 1e-8
 BATCH_SIZE = 32
+CLIP = 1.5
+ALPHA = 1000.
 
 ### Model Params
 MODEL_PARAMS = {"VAE": {}, "Cond_VAE": {}, "GAN": {}, "Cond_GAN": {}}
