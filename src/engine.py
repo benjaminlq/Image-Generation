@@ -30,7 +30,8 @@ def BCE_VAE_loss(
     Returns:
         tuple: total_loss, bce_loss, kld_loss
     """
-    BCE = F.binary_cross_entropy(x_recon, x, reduction="none").sum(dim=1).mean(dim=0)
+    bs = x.size(0)
+    BCE = F.binary_cross_entropy(x_recon.view(bs, -1), x.view(bs, -1), reduction="none").sum(dim=1).mean(dim=0)
     KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1).mean(dim=0)
     return BCE * alpha + KLD, BCE, KLD
 
@@ -51,8 +52,9 @@ def MSE_VAE_loss(
     Returns:
         tuple: total_loss, mse_loss, kld_loss
     """
-    MSE = F.mse_loss(x_recon, x, reduction="sum")
-    KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1)
+    bs = x.size(0)
+    MSE = F.mse_loss(x_recon.view(bs, -1), x.view(bs, -1), reduction="sum")
+    KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1).mean(0)
     return MSE * alpha + KLD, MSE, KLD
 
 
@@ -107,8 +109,6 @@ def train(
     history = {"total_loss": [], "recon_loss": [], "kld_loss": []}
 
     model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
-    if not model_path.exists():
-        model_path.mkdir(parents=True)
 
     for epoch in range(no_epochs):
         model.train()
@@ -151,6 +151,8 @@ def train(
             best_total = val_total_loss
             patience_count = 0
             if save:
+                if not model_path.exists():
+                    model_path.mkdir(parents=True)
                 ckpt_path = str(model_path / "model.pt")
                 utils.save_model(model, ckpt_path)
 
@@ -164,9 +166,9 @@ def train(
                     f"{str(model)}: No val loss improvement for {patience} consecutive epochs. Early Stopped at epoch {epoch + 1}"
                 )
 
-
-    history_path = str(model_path / "history.png")
-    utils.plot_images(history_path)
+    if save: 
+        history_path = str(model_path / "history.png")
+        utils.plot_images(history_path)
     return history
 
 
