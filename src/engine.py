@@ -15,7 +15,11 @@ from config import LOGGER
 
 
 def BCE_VAE_loss(
-    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor, alpha: float = config.ALPHA,
+    x_recon: torch.tensor,
+    x: torch.tensor,
+    mu: torch.tensor,
+    log_var: torch.tensor,
+    alpha: float = config.ALPHA,
 ):
     """Loss for Variational Auto Encoder. Reconstruction loss used is Binary Cross Entropy (BCE) on each pixel.
 
@@ -26,18 +30,26 @@ def BCE_VAE_loss(
         log_var (torch.tensor): Variance of Gaussian Distribution of Latent vector
         alpha (float): Weight to balance between reconstruction loss and KL divergence. Higher weight means higher emphasis on reconstruction loss.
         Default to 1000.
-        
+
     Returns:
         tuple: total_loss, bce_loss, kld_loss
     """
     bs = x.size(0)
-    BCE = F.binary_cross_entropy(x_recon.view(bs, -1), x.view(bs, -1), reduction="none").sum(dim=1).mean(dim=0)
+    BCE = (
+        F.binary_cross_entropy(x_recon.view(bs, -1), x.view(bs, -1), reduction="none")
+        .sum(dim=1)
+        .mean(dim=0)
+    )
     KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1).mean(dim=0)
     return BCE * alpha + KLD, BCE, KLD
 
 
 def MSE_VAE_loss(
-    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor, alpha: float = config.ALPHA,
+    x_recon: torch.tensor,
+    x: torch.tensor,
+    mu: torch.tensor,
+    log_var: torch.tensor,
+    alpha: float = config.ALPHA,
 ):
     """Loss for Variational Auto Encoder. Reconstruction loss used is Mean Squared Error (MSE) on each pixel.
 
@@ -166,9 +178,9 @@ def train(
                     f"{str(model)}: No val loss improvement for {patience} consecutive epochs. Early Stopped at epoch {epoch + 1}"
                 )
 
-    if save: 
+    if save:
         history_path = str(model_path / "history.png")
-        utils.plot_images(history_path)
+        utils.plot_loss(history_path)
     return history
 
 
@@ -204,7 +216,12 @@ def eval(
                 )
                 save_image(
                     comparison.cpu(),
-                    str(config.ARTIFACT_PATH / f"reconstruction_{str(epoch)}.png"),
+                    str(
+                        config.ARTIFACT_PATH
+                        / "model_ckpt"
+                        / str(model)
+                        / f"reconstruction_{str(epoch)}.png"
+                    ),
                     nrow=n,
                 )
 
