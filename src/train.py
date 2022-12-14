@@ -4,10 +4,10 @@ import argparse
 
 import config
 
-# from config import LOGGER
-# from models.vae import VAE
-# from engine import train
-# from dataset import MNIST_Dataloader
+from config import LOGGER
+from models.vae import DeepVAE
+from engine import train
+from dataloaders import dataloaders
 
 
 def get_argument_parser():
@@ -81,6 +81,6 @@ def get_argument_parser():
 
     return args
 
-
 if __name__ == "__main__":
     args = get_argument_parser()
+    data_manager = 

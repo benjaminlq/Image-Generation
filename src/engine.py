@@ -15,7 +15,7 @@ from config import LOGGER
 
 
 def BCE_VAE_loss(
-    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor
+    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor, alpha: float = config.ALPHA,
 ):
     """Loss for Variational Auto Encoder. Reconstruction loss used is Binary Cross Entropy (BCE) on each pixel.
 
@@ -24,17 +24,19 @@ def BCE_VAE_loss(
         x (torch.tensor): Original Images
         mu (torch.tensor): Mean of Gaussian Distribution of Latent vector
         log_var (torch.tensor): Variance of Gaussian Distribution of Latent vector
-
+        alpha (float): Weight to balance between reconstruction loss and KL divergence. Higher weight means higher emphasis on reconstruction loss.
+        Default to 1000.
+        
     Returns:
         tuple: total_loss, bce_loss, kld_loss
     """
     BCE = F.binary_cross_entropy(x_recon, x, reduction="none").sum(dim=1).mean(dim=0)
     KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1).mean(dim=0)
-    return BCE + KLD, BCE, KLD
+    return BCE * alpha + KLD, BCE, KLD
 
 
 def MSE_VAE_loss(
-    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor
+    x_recon: torch.tensor, x: torch.tensor, mu: torch.tensor, log_var: torch.tensor, alpha: float = config.ALPHA,
 ):
     """Loss for Variational Auto Encoder. Reconstruction loss used is Mean Squared Error (MSE) on each pixel.
 
@@ -43,13 +45,15 @@ def MSE_VAE_loss(
         x (torch.tensor): Original Images
         mu (torch.tensor): Mean of Gaussian Distribution of Latent vector
         log_var (torch.tensor): Variance of Gaussian Distribution of Latent vector
+        alpha (float): Weight to balance between reconstruction loss and KL divergence. Higher weight means higher emphasis on reconstruction loss.
+        Default to 1000.
 
     Returns:
         tuple: total_loss, mse_loss, kld_loss
     """
     MSE = F.mse_loss(x_recon, x, reduction="sum")
     KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=1)
-    return MSE + KLD, MSE, KLD
+    return MSE * alpha + KLD, MSE, KLD
 
 
 def train(
@@ -102,6 +106,10 @@ def train(
     patience_count = 0
     history = {"total_loss": [], "recon_loss": [], "kld_loss": []}
 
+    model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
+    if not model_path.exists():
+        model_path.mkdir(parents=True)
+
     for epoch in range(no_epochs):
         model.train()
         epoch_loss, recon_epoch_loss, kld_epoch_loss = 0, 0, 0
@@ -143,22 +151,22 @@ def train(
             best_total = val_total_loss
             patience_count = 0
             if save:
-                model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
-                if not model_path.exists():
-                    model_path.mkdir(parents=True)
                 ckpt_path = str(model_path / "model.pt")
                 utils.save_model(model, ckpt_path)
 
         else:
             LOGGER.info(
-                f"{str(model)}: Validation Accuracy from epoch {epoch + 1} did not improve"
+                f"{str(model)}: Validation Loss from epoch {epoch + 1} did not improve"
             )
             patience_count += 1
             if early_stopping and patience_count == patience:
                 LOGGER.warning(
-                    f"{str(model)}: No val acc improvement for {patience} consecutive epochs. Early Stopped at epoch {epoch + 1}"
+                    f"{str(model)}: No val loss improvement for {patience} consecutive epochs. Early Stopped at epoch {epoch + 1}"
                 )
 
+
+    history_path = str(model_path / "history.png")
+    utils.plot_images(history_path)
     return history
 
 
