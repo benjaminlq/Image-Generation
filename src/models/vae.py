@@ -159,6 +159,7 @@ class ConvVAE(BaseVAE):
         common_size: int = 128,
         hidden_size: int = 128,
         activation: Literal["Tanh","Sigmoid"] = "Tanh",
+        kernel_size: int = 3,
     ):
         """Deep VAE Model with Convolutional Encoder and Decoder
 
@@ -170,6 +171,15 @@ class ConvVAE(BaseVAE):
             activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
         """
         super(DeepVAE, self).__init__(input_size, common_size, hidden_size, activation)        
+        
+        assert kernel_size % 2 == 1, "Kernel Size must be Odd"
+        self.kernel_size = kernel_size
+        self.padding = kernel_size // 2
+        
+        self.encoder = nn.Sequential(
+            nn.Conv2d(self.c, 16, kernel_size = self.kernel_size, padding=self.padding), nn.BatchNorm2d(64), nn.ReLU(),
+            
+        )
 
 if __name__ == "__main__":
     sample = torch.rand(5, 3, 28, 28)

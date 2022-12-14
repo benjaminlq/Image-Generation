@@ -2,18 +2,20 @@
 """
 
 from pathlib import Path
-from typing import Union, Optional, Callable
+from typing import Callable, Optional, Union
 
 from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, transforms
 
 import config
 
+
 class BaseDataLoader:
     """MNIST Digit DataLoader"""
 
     def __init__(
-        self, data_path: Union[str, Path] = config.DATA_PATH,
+        self,
+        data_path: Union[str, Path] = config.DATA_PATH,
         batch_size: int = 32,
         train_dataset: Optional[Dataset] = None,
         test_dataset: Optional[Dataset] = None,

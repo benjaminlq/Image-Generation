@@ -10,6 +10,7 @@ from torchvision import datasets, transforms
 import config
 from dataloaders import BaseDataLoader
 
+
 class MNISTDataLoader(BaseDataLoader):
     """MNIST Digit DataLoader"""
 
