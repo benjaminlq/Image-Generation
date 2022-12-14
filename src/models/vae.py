@@ -17,7 +17,7 @@ class BaseVAE(nn.Module):
 
     def __init__(
         self,
-        input_size: int = 784,
+        input_size: tuple = (1, 28, 28),
         common_size: int = 400,
         hidden_size: int = 128,
         activation: Literal["Tanh","Sigmoid"] = "Tanh",
@@ -25,23 +25,25 @@ class BaseVAE(nn.Module):
         """Based VAE Model
 
         Args:
-            input_size (int, optional): Input Size. Defaults to 784.
+            input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
             common_size (int, optional): Output Size of the shared architecture between network learning
             mean and variance of the estimated latent probability distribution. Defaults to 400.
-            hidden_size (int, optional): _description_. Defaults to 20.
+            hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
         """
         super(BaseVAE, self).__init__()
-
+        
+        self.c, self.h, self.w = input_size
         self.hidden_size = hidden_size
         self.common_size = common_size
 
-        self.flatten = nn.Flatten()
         self.mean_fc = nn.Linear(common_size, hidden_size)
         self.var_fc = nn.Linear(common_size, hidden_size)
         
-        self.encoder = nn.Linear(input_size, common_size)
+        self.encoder = nn.Sequential(nn.Flatten(), nn.Linear(self.c * self.h * self.w, common_size))
         self.decoder = nn.Sequential(nn.Linear(hidden_size, common_size), nn.ReLU(),
-                                     nn.Linear(common_size, input_size))
+                                     nn.Linear(common_size, self.c * self.h * self.w))
+        
         self.activation = getattr(nn, activation)()
 
     def encode(self, flattened_inputs: torch.tensor) -> torch.tensor:
@@ -82,8 +84,9 @@ class BaseVAE(nn.Module):
         Returns:
             torch.tensor: Reconstructed Image
         """
+        bs = z.size(0)
         out = self.activation(self.decoder(z))
-        return out
+        return out.view(bs, self.c, self.h, self.w)
 
     def forward(self, inputs: torch.tensor):
         """Forward Propagation. The steps involved in a forward pass:
@@ -98,8 +101,8 @@ class BaseVAE(nn.Module):
         Returns:
             _type_: _description_
         """
-        x = self.flatten(inputs)
-        mu, log_var = self.encode(x)
+
+        mu, log_var = self.encode(inputs)
         z = self.reparameterize(mu, log_var)
         out = self.decode(z)
         return out, mu, log_var
@@ -110,13 +113,26 @@ class BaseVAE(nn.Module):
 
 class DeepVAE(BaseVAE):
     def __init__(
-        self, input_size: int = 784, common_size: int = 128, hidden_size: int = 128, alpha: float = 1.0,
+        self,
+        input_size: tuple = (1, 28, 28),
+        common_size: int = 128,
+        hidden_size: int = 128,
         activation: Literal["Tanh","Sigmoid"] = "Tanh",
     ):
+        """Deep VAE Model
+
+        Args:
+            input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
+            common_size (int, optional): Output Size of the shared architecture between network learning
+            mean and variance of the estimated latent probability distribution. Defaults to 400.
+            hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
+        """
         super(DeepVAE, self).__init__(input_size, common_size, hidden_size, activation)
         
         self.encoder = nn.Sequential(
             nn.Flatten(),
+            nn.Linear(self.c * self.h * self.w, 784), nn.BatchNorm1d(784), nn.LeakyReLU(0.1),
             nn.Linear(784, 392), nn.BatchNorm1d(392), nn.LeakyReLU(0.1),
             nn.Linear(392, 196), nn.BatchNorm1d(196), nn.LeakyReLU(0.1),
             nn.Linear(196, 128), nn.BatchNorm1d(128), nn.LeakyReLU(0.1),
@@ -127,15 +143,38 @@ class DeepVAE(BaseVAE):
             nn.Linear(hidden_size, 128), nn.BatchNorm1d(128), nn.LeakyReLU(0.1),
             nn.Linear(128, 196), nn.BatchNorm1d(196), nn.LeakyReLU(0.1),
             nn.Linear(196, 392), nn.BatchNorm1d(392), nn.LeakyReLU(0.1),
-            nn.Linear(392, 784),
+            nn.Linear(392, 784), nn.BatchNorm1d(784), nn.LeakyReLU(0.1),
+            nn.Linear(784, self.c * self.h * self.w)
         )
         
     def __str__(self):
         return "DeepVAE"
+    
+class ConvVAE(BaseVAE):
+    """VAE using convolution Encoder and Decoder
+    """
+    def __init__(
+        self,
+        input_size: tuple = (1, 28, 28),
+        common_size: int = 128,
+        hidden_size: int = 128,
+        activation: Literal["Tanh","Sigmoid"] = "Tanh",
+    ):
+        """Deep VAE Model with Convolutional Encoder and Decoder
+
+        Args:
+            input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
+            common_size (int, optional): Output Size of the shared architecture between network learning
+            mean and variance of the estimated latent probability distribution. Defaults to 400.
+            hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
+        """
+        super(DeepVAE, self).__init__(input_size, common_size, hidden_size, activation)        
 
 if __name__ == "__main__":
-    sample = torch.rand(3, 28, 28)
-    vae_model = BaseVAE()
+    sample = torch.rand(5, 3, 28, 28)
+    c, h, w = sample.size(1), sample.size(2), sample.size(3) 
+    vae_model = DeepVAE(input_size = (c, h, w))
     out, mu, log_var = vae_model(sample)
     print(out.size())
     print(mu.size())

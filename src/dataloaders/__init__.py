@@ -1,3 +1,6 @@
-from .mnist import MNIST_Dataloader
+from .base import BaseDataLoader
+from .mnist import MNISTDataLoader
 
-dataloaders = {"mnist":MNIST_Dataloader}
+__all__ = ['MNISTDataLoader', "BaseDataLoader"]
+
+dataloaders = {"mnist":MNISTDataLoader}
