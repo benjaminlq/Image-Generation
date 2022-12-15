@@ -34,13 +34,3 @@ jobs:
     - name: Pytest
       run: |
         pytest
-
-    # - name: Train Model
-    #   run: |
-    #     src/train.py
-
-    # - name: Build the Docker image
-    #   run: docker build . --file Dockerfile --tag vae-gan:latest
-
-    # - name: Push Docker Image
-    #   run:
