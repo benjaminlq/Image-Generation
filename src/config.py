@@ -34,6 +34,9 @@ MODEL_PARAMS = {
 LOGGER = logging.getLogger(__name__)
 
 stream_handler = logging.StreamHandler(sys.stdout)
+if not (ARTIFACT_PATH / "model_ckpt").exists():
+    (ARTIFACT_PATH / "model_ckpt").mkdir()
+
 file_handler = logging.FileHandler(
     filename=str(ARTIFACT_PATH / "model_ckpt" / "logfile.log")
 )
