@@ -122,5 +122,6 @@ if __name__ == "__main__":
         early_stopping=args.earlystop,
         patience=args.patience,
         load=args.load,
+        save=True,
     )
     LOGGER.info(f"{str(model)}: Training completed")

@@ -179,8 +179,15 @@ def train(
                 )
 
     if save:
+        if not model_path.exists():
+            model_path.mkdir(parents=True)
         history_path = str(model_path / "history.png")
-        utils.plot_loss(history_path)
+        utils.plot_loss(
+            history["total_loss"],
+            history["recon_loss"],
+            history["kld_loss"],
+            history_path,
+        )
     return history
 
 
@@ -214,14 +221,14 @@ def eval(
                 comparison = torch.cat(
                     [images[:n], recon_batch.view(images.size(0), 1, 28, 28)[:n]]
                 )
+
+                model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
+                if not model_path.exists():
+                    model_path.mkdir(parents=True)
+
                 save_image(
                     comparison.cpu(),
-                    str(
-                        config.ARTIFACT_PATH
-                        / "model_ckpt"
-                        / str(model)
-                        / f"reconstruction_{str(epoch)}.png"
-                    ),
+                    str(model_path / f"reconstruction_{str(epoch)}.png"),
                     nrow=n,
                 )
 

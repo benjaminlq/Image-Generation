@@ -328,6 +328,9 @@ class ConvVAE(BaseVAE):
             cls._conv_block(out_channels, out_channels, kernel_size, padding),
         )
 
+    def __str__(self):
+        return "ConvVAE"
+
 
 if __name__ == "__main__":
     sample = torch.rand(5, 1, 28, 28)
