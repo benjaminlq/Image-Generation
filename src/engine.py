@@ -73,8 +73,7 @@ def MSE_VAE_loss(
 def train(
     model: Callable,
     loss_function: Callable,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
+    data_manager: Callable,
     no_epochs: int = config.EPOCHS,
     learning_rate: float = config.LEARNING_RATE,
     early_stopping: bool = False,
@@ -103,6 +102,8 @@ def train(
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=0.5, patience=3
     )
+    train_loader = data_manager.train_loader()
+    val_loader = data_manager.test_loader()
 
     model.to(config.DEVICE)
     LOGGER.info(f"Training Model on {config.DEVICE}")
@@ -165,7 +166,10 @@ def train(
             if save:
                 if not model_path.exists():
                     model_path.mkdir(parents=True)
-                ckpt_path = str(model_path / "model.pt")
+                ckpt_path = str(
+                    model_path
+                    / f"{str(model)}_{model.hidden_size}_{str(data_manager)}.pt"
+                )
                 utils.save_model(model, ckpt_path)
 
         else:

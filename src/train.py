@@ -18,6 +18,7 @@ def get_argument_parser():
     - Load Existing Checkpoint
     - Early Stopping Setting
     - Patience Epoch Count
+    - Hidden Size
 
     Returns:
         args: Arguments for training models
@@ -92,6 +93,14 @@ def get_argument_parser():
         default="mse",
     )
 
+    parser.add_argument(
+        "-hd",
+        "--hidden",
+        help="Length of latent vector",
+        type=int,
+        default=128,
+    )
+
     args = parser.parse_args()
 
     return args
@@ -101,9 +110,10 @@ if __name__ == "__main__":
     args = get_argument_parser()
     datamodule, img_size = dataloaders[args.dataset]
     data_manager = datamodule(batch_size=args.batch_size)
-    train_loader = data_manager.train_loader()
-    test_loader = data_manager.test_loader()
-    model = models[args.model](input_size=img_size, **config.MODEL_PARAMS[args.model])
+    model = models[args.model](
+        input_size=img_size, hidden_size=args.hidden, **config.MODEL_PARAMS[args.model]
+    )
+    print(model)
     if args.loss.lower() == "mse":
         loss_function = MSE_VAE_loss
     elif args.loss.lower() == "bce":
@@ -115,8 +125,7 @@ if __name__ == "__main__":
     train(
         model,
         loss_function,
-        train_loader,
-        test_loader,
+        data_manager,
         no_epochs=args.epochs,
         learning_rate=args.learning_rate,
         early_stopping=args.earlystop,
@@ -125,3 +134,5 @@ if __name__ == "__main__":
         save=True,
     )
     LOGGER.info(f"{str(model)}: Training completed")
+
+# python3 /src/train.py -md BaseVAE -ls bce -e 25

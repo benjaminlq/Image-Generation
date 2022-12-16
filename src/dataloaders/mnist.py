@@ -28,21 +28,28 @@ class MNISTDataLoader(BaseDataLoader):
         super(MNISTDataLoader, self).__init__(data_path, batch_size)
 
         if std_normalize:
-            train_transform = transforms.Compose([
-                    transforms.RandomCrop(28, padding = 4),
+            train_transform = transforms.Compose(
+                [
+                    transforms.RandomCrop(28, padding=4),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=0.5, std=0.5)
-                ])
-            test_transform = transforms.Compose([transforms.ToTensor(),
-                                                transforms.Normalize(mean=0.5, std=0.5)
-                                                ])
+                    transforms.Normalize(mean=0.5, std=0.5),
+                ]
+            )
+            test_transform = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize(mean=0.5, std=0.5)]
+            )
         else:
-            train_transform = transforms.Compose([
-                    transforms.RandomCrop(28, padding = 4),
+            train_transform = transforms.Compose(
+                [
+                    transforms.RandomCrop(28, padding=4),
                     transforms.ToTensor(),
-                ])
-            test_transform = transforms.Compose([transforms.ToTensor(),
-                                                ])
+                ]
+            )
+            test_transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                ]
+            )
 
         self.train_dataset = datasets.MNIST(
             data_path, download=True, train=True, transform=train_transform
@@ -50,6 +57,10 @@ class MNISTDataLoader(BaseDataLoader):
         self.test_dataset = datasets.MNIST(
             data_path, download=True, train=False, transform=test_transform
         )
+
+    def __str__(self):
+        """Dataset Name"""
+        return "mnist"
 
 
 if __name__ == "__main__":

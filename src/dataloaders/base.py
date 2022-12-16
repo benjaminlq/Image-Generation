@@ -5,13 +5,12 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from torch.utils.data import DataLoader, Dataset
-from torchvision import datasets, transforms
 
 import config
 
 
 class BaseDataLoader:
-    """MNIST Digit DataLoader"""
+    """Base DataLoader Module"""
 
     def __init__(
         self,
