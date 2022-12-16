@@ -9,6 +9,7 @@ import torch
 
 MAIN_PATH = Path(__file__).resolve().parents[1]
 DATA_PATH = MAIN_PATH / "data"
+DEPLOY_PATH = MAIN_PATH / "src" / "deploy"
 ARTIFACT_PATH = MAIN_PATH / "artifacts"
 
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -20,6 +21,7 @@ EPS = 1e-8
 BATCH_SIZE = 32
 CLIP = 1.5
 ALPHA = 1000.0
+HIDDEN_SIZE = 2
 
 ### Model Params
 MODEL_PARAMS = {
