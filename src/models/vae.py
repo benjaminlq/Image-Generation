@@ -5,6 +5,8 @@ from typing import Literal
 import torch
 import torch.nn as nn
 
+import config
+
 
 class BaseVAE(nn.Module):
     """
@@ -19,7 +21,7 @@ class BaseVAE(nn.Module):
         self,
         input_size: tuple = (1, 28, 28),
         common_size: int = 400,
-        hidden_size: int = 128,
+        hidden_size: int = config.HIDDEN_SIZE,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
     ):
         """Based VAE Model
@@ -119,7 +121,7 @@ class BaseVAE(nn.Module):
 
     def __str__(self):
         """Model Name"""
-        return "VAE"
+        return "BaseVAE"
 
 
 class DeepVAE(BaseVAE):
@@ -127,7 +129,7 @@ class DeepVAE(BaseVAE):
         self,
         input_size: tuple = (1, 28, 28),
         common_size: int = 128,
-        hidden_size: int = 128,
+        hidden_size: int = config.HIDDEN_SIZE,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
     ):
         """Deep VAE Model
@@ -186,8 +188,8 @@ class ConvVAE(BaseVAE):
         self,
         input_size: tuple = (1, 28, 28),
         common_size: int = 196,
-        hidden_size: int = 128,
-        activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
+        hidden_size: int = config.HIDDEN_SIZE,
+        activation: Literal["Tanh", "Sigmoid"] = "Tanh",
         kernel_size: int = 3,
     ):
         """Deep VAE Model with Convolutional Encoder and Decoder
@@ -333,7 +335,7 @@ class ConvVAE(BaseVAE):
 
 
 if __name__ == "__main__":
-    sample = torch.rand(5, 1, 28, 28)
+    sample = torch.rand(1, 1, 28, 28)
     c, h, w = sample.size(1), sample.size(2), sample.size(3)
     vae_model = ConvVAE(input_size=(c, h, w))
     out, mu, log_var = vae_model(sample)
