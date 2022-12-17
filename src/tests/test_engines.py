@@ -1,3 +1,5 @@
+"""Unit Tests for Engine functions
+"""
 import torch
 
 from dataloaders import dataloaders
@@ -6,6 +8,7 @@ from models import BaseVAE
 
 
 def test_BCE_loss():
+    """Test Behaviour of BCE loss"""
     alpha = 100
     x = torch.rand(5, 3, 28, 28)
     x_recon = torch.rand(5, 3, 28, 28)
@@ -16,6 +19,7 @@ def test_BCE_loss():
 
 
 def test_mse_loss():
+    """Test Behaviour of BCE loss"""
     alpha = 100
     x = torch.rand(5, 3, 28, 28)
     x_recon = torch.rand(5, 3, 28, 28)
@@ -26,7 +30,8 @@ def test_mse_loss():
 
 
 def test_train():
-    datamodule, img_size = dataloaders["mnist"]
+    """Test Train and Evaluation engine functions"""
+    datamodule, img_size = dataloaders["cifar10"]
     data_manager = datamodule(batch_size=1000)
     model = BaseVAE(input_size=img_size)
 
@@ -35,6 +40,5 @@ def test_train():
 
 
 if __name__ == "__main__":
-    # test_BCE_loss()
-    # test_mse_loss()
+
     test_train()
