@@ -8,9 +8,15 @@ from dataloaders import dataloaders
 from deploy.inference import InferVAE
 from models import models
 
-inferer = InferVAE()
-
 st.set_page_config("VAE_GAN")
+
+
+@st.cache(allow_output_mutation=True)
+def initialize_inferer():
+    return InferVAE()
+
+
+inferer = initialize_inferer()
 
 data_imgs = {
     "mnist": str(config.DEPLOY_PATH / "images" / "mnist.png"),
@@ -18,7 +24,7 @@ data_imgs = {
     "cifar10": str(config.DEPLOY_PATH / "images" / "cifar10.png"),
 }
 
-st.title(":blue[VAE] and :green[GAN] on MNIST, Fashion MNIST and CIFAR-10")
+st.title("VAE and GAN on MNIST, Fashion MNIST and CIFAR-10")
 
 col1_recon_settings, col2_recon_settings, col3_recon_settings = st.columns(3)
 
@@ -55,14 +61,16 @@ with tab1:
 ### Reconstruction
 with tab2:
     st.header("Image Reconstruction")
-    recon_class_no = st.selectbox("Digit", list(range(10)))
+    recon_class_no = st.selectbox("Class", config.CLASSES[dataset].keys())
     target_col, recon_col = st.columns(2)
 
     with st.form("Image Recon Form"):
         sample_img_recon = st.form_submit_button("Reconstruct Image")
         if sample_img_recon:
             with target_col:
-                target_img = inferer.sample_image(recon_class_no, dataset)
+                target_img = inferer.sample_image(
+                    config.CLASSES[dataset][recon_class_no], dataset
+                )
                 st.image(
                     target_img.permute(1, 2, 0).detach().numpy(),
                     width=300,
@@ -84,13 +92,15 @@ with tab3:
     img1, img2 = st.columns(2)
 
     with img1:
-        digit_class1 = st.selectbox("First Digit", list(range(10)))
-        first_img = inferer.sample_image(digit_class1, dataset)
+        digit_class1 = st.selectbox("First Class", config.CLASSES[dataset].keys())
+        first_img = inferer.sample_image(config.CLASSES[dataset][digit_class1], dataset)
         st.image(first_img.permute(1, 2, 0).detach().numpy(), width=300)
 
     with img2:
-        digit_class2 = st.selectbox("Second Digit", list(range(10)))
-        second_img = inferer.sample_image(digit_class2, dataset)
+        digit_class2 = st.selectbox("Second Class", config.CLASSES[dataset].keys())
+        second_img = inferer.sample_image(
+            config.CLASSES[dataset][digit_class2], dataset
+        )
         st.image(second_img.permute(1, 2, 0).detach().numpy(), width=300)
 
     with st.form("Image Interpolate Form"):
@@ -101,4 +111,4 @@ with tab3:
             )
             st.image(intermediate_images.permute(1, 2, 0).detach().numpy(), width=650)
 
-# streamlit run ./src/deploy/streamlit_app.py
+# streamlit run ./src/streamlit_app.py

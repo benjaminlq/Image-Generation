@@ -53,7 +53,13 @@ class InferVAE:
         self.datasets = {
             "mnist": datasets.MNIST(
                 data_path, download=True, train=True, transform=infer_transforms
-            )
+            ),
+            "fmnist": datasets.FashionMNIST(
+                data_path, download=True, train=True, transform=infer_transforms
+            ),
+            "cifar10": datasets.CIFAR10(
+                data_path, download=True, train=True, transform=infer_transforms
+            ),
         }
 
         self.index_dict = {}
@@ -181,5 +187,5 @@ if __name__ == "__main__":
     infer_cls = InferVAE()
     first_img = infer_cls.sample_image(3, "mnist")
     second_img = infer_cls.sample_image(7, "mnist")
-    int_img = infer_cls.interpolate(first_img, second_img, "ConvVAE", 2, "mnist")
+    int_img = infer_cls.interpolate(first_img, second_img, "ConvVAE", 2, "fmnist")
     print(int_img.size())

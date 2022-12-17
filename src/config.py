@@ -23,6 +23,38 @@ CLIP = 1.5
 ALPHA = 1000.0
 HIDDEN_SIZE = 2
 
+### Class Translation
+fmnist_classes = [
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot",
+]
+cifar10_classes = [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
+]
+
+CLASSES = {
+    "mnist": {digit: digit for digit in range(10)},
+    "fmnist": {label: idx for idx, label in enumerate(fmnist_classes)},
+    "cifar10": {label: idx for idx, label in enumerate(cifar10_classes)},
+}
+
 ### Model Params
 MODEL_PARAMS = {
     "BaseVAE": {},
