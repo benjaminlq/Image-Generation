@@ -1,4 +1,4 @@
-"""MNISTDataLoader used for generation project
+"""CIFAR10 used for generation project
 """
 
 from pathlib import Path
@@ -10,8 +10,8 @@ import config
 from dataloaders import BaseDataLoader
 
 
-class MNISTDataLoader(BaseDataLoader):
-    """MNIST Digit DataLoader"""
+class CIFARDataLoader(BaseDataLoader):
+    """CIFAR10 Digit DataLoader"""
 
     def __init__(
         self,
@@ -19,13 +19,13 @@ class MNISTDataLoader(BaseDataLoader):
         batch_size: int = 32,
         std_normalize: bool = False,
     ):
-        """MNIST Data Module
+        """CIFAR10 Data Module
 
         Args:
-            data_path (Union[str, Path], optional): Path to load/save MNIST datasets.
+            data_path (Union[str, Path], optional): Path to load/save CIFAR10 datasets.
             batch_size (int, optional): Batch Size. Defaults to 32.
         """
-        super(MNISTDataLoader, self).__init__(data_path, batch_size)
+        super(CIFARDataLoader, self).__init__(data_path, batch_size)
 
         if std_normalize:
             train_transform = transforms.Compose(
@@ -56,20 +56,20 @@ class MNISTDataLoader(BaseDataLoader):
                 ]
             )
 
-        self.train_dataset = datasets.MNIST(
+        self.train_dataset = datasets.CIFAR10(
             data_path, download=True, train=True, transform=train_transform
         )
-        self.test_dataset = datasets.MNIST(
+        self.test_dataset = datasets.CIFAR10(
             data_path, download=True, train=False, transform=test_transform
         )
 
     def __str__(self):
         """Dataset Name"""
-        return "mnist"
+        return "cifar10"
 
 
 if __name__ == "__main__":
-    data_manager = MNISTDataLoader()
+    data_manager = CIFARDataLoader()
     train_loader = data_manager.train_loader()
     images, labels = next(iter(train_loader))
     print("Train Batch images size:", images.size())
