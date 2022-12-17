@@ -335,9 +335,10 @@ class ConvVAE(BaseVAE):
 
 
 if __name__ == "__main__":
-    sample = torch.rand(1, 1, 28, 28)
+    sample = torch.rand(32, 3, 28, 28)
     c, h, w = sample.size(1), sample.size(2), sample.size(3)
     vae_model = ConvVAE(input_size=(c, h, w))
+    vae_model.eval()
     out, mu, log_var = vae_model(sample)
     print(out.size())
     print(mu.size())

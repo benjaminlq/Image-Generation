@@ -135,4 +135,4 @@ if __name__ == "__main__":
     )
     LOGGER.info(f"{str(model)}: Training completed")
 
-# python3 /src/train.py -md BaseVAE -ls bce -e 25
+# python3 ./src/train.py -md BaseVAE -ls bce -e 25 --dataset fmnist

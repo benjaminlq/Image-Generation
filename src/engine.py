@@ -223,7 +223,10 @@ def eval(
             if batch_idx == 0:
                 n = min(images.size(0), 8)
                 comparison = torch.cat(
-                    [images[:n], recon_batch.view(images.size(0), 1, 28, 28)[:n]]
+                    [
+                        images[:n],
+                        recon_batch.view(images.size(0), model.c, model.h, model.w)[:n],
+                    ]
                 )
 
                 model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
