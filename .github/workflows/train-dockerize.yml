@@ -29,6 +29,7 @@ jobs:
       env:
         EPOCHS: 1
       run: |
+        chmod 777 train.sh
         ./train.sh $EPOCHS
     - name: Docker Build and Push
       uses: elgohr/Publish-Docker-Github-Action@master
