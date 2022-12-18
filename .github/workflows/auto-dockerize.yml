@@ -1,10 +1,15 @@
-name: Train and Publish Model
+name: Publish Model
 
 on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "artifacts/**/*.pt"
+      - "src/deploy/**"
+      - "src/streamlit_app.py"
   workflow_dispatch:
 
 jobs:
-
   test-train-docker:
     runs-on: ubuntu-latest
     strategy:
@@ -29,19 +34,12 @@ jobs:
       run: |
         pytest
 
-    - name: Train
-      env:
-        EPOCHS: 1
-      run: |
-        chmod 777 train.sh
-        ./train.sh $EPOCHS
-
     - name: Model Validation
       run: |
         echo "To add performance validation before deploy"
 
     - name: Docker Build and Push
-      uses: elgohr/Publish-Docker-Github-Action@v4
+      uses: elgohr/Publish-Docker-Github-Action@master
       with:
         name: lequan2902/vaegan
         username: ${{ secrets.DOCKER_USERNAME }}
