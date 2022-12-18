@@ -29,6 +29,9 @@
 
 ## IV. Results and Discussion
 
-## V. Conclusion
+## V. Deployment
+1. [Streamlit App](https://image-generation-vae.streamlit.app/)
 
-## VI. References
+## VI. Conclusion
+
+## VII. References
