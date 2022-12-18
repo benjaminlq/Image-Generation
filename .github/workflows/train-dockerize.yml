@@ -32,7 +32,7 @@ jobs:
         chmod 777 train.sh
         ./train.sh $EPOCHS
     - name: Docker Build and Push
-      uses: elgohr/Publish-Docker-Github-Action@master
+      uses: elgohr/Publish-Docker-Github-Action@v4
       with:
         name: lequan2902/vaegan
         username: ${{ secrets.DOCKER_USERNAME }}
