@@ -114,6 +114,18 @@ class BaseVAE(nn.Module):
         z = self.reparameterize(mu, log_var)
         out = self.decode(z)
         return out, mu, log_var
+    
+    def generate(self, num_samples: int = 1):
+        """Generate a sample or batch of samples randomly from prior P(z) ~ N(0,1)
+
+        Args:
+            num_samples (int, optional): Size of sample batch to be generated. Defaults to 1.
+
+        Returns:
+            Tuple(torch.tensor, torch.tensor): (Generated Img Batch, Latent Vector Batch)
+        """
+        z = torch.randn((num_samples, self.hidden_size)).to(config.DEVICE)
+        return (self.decode(z).squeeze(0), z.squeeze(0)) if num_samples == 1 else (self.decode(z), z)
 
     def __str__(self):
         """Model Name"""
@@ -220,11 +232,15 @@ class ConvVAE(BaseVAE):
 
 
 if __name__ == "__main__":
-    sample = torch.rand(32, 3, 28, 28)
+    sample = torch.rand(32, 3, 28, 28).to(config.DEVICE)
     c, h, w = sample.size(1), sample.size(2), sample.size(3)
     vae_model = ConvVAE(input_size=(c, h, w))
+    vae_model.to(config.DEVICE)
     vae_model.eval()
     out, mu, log_var = vae_model(sample)
-    print(out.size())
-    print(mu.size())
-    print(log_var.size())
+    generated_imgs, zs = vae_model.generate()
+    print(generated_imgs.size())
+    print(zs.size())
+    generated_imgs, zs = vae_model.generate(3)
+    print(generated_imgs.size())
+    print(zs.size())

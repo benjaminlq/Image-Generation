@@ -182,6 +182,9 @@ class InferVAE:
         imgs = [first_img] + intermediate_imgs + [second_img]
         return make_grid(imgs, nrow=len(imgs))
 
+    def generate(
+        self,
+    )
 
 if __name__ == "__main__":
     infer_cls = InferVAE()

@@ -6,7 +6,6 @@ import torch
 import config
 from dataloaders import dataloaders
 from deploy.inference import InferVAE
-from models import models
 
 st.set_page_config("VAE_GAN")
 
@@ -26,15 +25,13 @@ data_imgs = {
 
 st.title("VAE and GAN on MNIST, Fashion MNIST and CIFAR-10")
 
-col1_recon_settings, col2_recon_settings, col3_recon_settings = st.columns(3)
-
 with st.sidebar:
+    st.header("Settings")
     dataset = st.selectbox("Dataset", ["mnist", "fmnist", "cifar10"])
     _, input_size = dataloaders[dataset]
     with st.expander("See sample images"):
         st.image(data_imgs[dataset])
-    hidden_size = st.radio("Hidden Size", [2, 32, 64, 128])
-    model_type = st.radio("Model", models.keys())
+    hidden_size = st.radio("Hidden Size", [2, 64])
 
 tab1, tab2, tab3 = st.tabs(
     ["Image Generation", "Image Reconstruction", "Image Interpolation"]
@@ -46,17 +43,19 @@ with tab1:
     st.markdown(
         "Generate a random sample from Standard Gaussian Distribution from the Latent Space"
     )
-    with st.form("Image Gen Form"):
-        gen_random = st.form_submit_button("Generate Image")
-        if gen_random:
-            z = torch.randn(hidden_size)
-            st.write(z)
-            recon_img = inferer.decode(z, model_type, hidden_size, dataset)
-            st.image(
-                recon_img.permute(1, 2, 0).detach().numpy(),
-                width=400,
-                caption="Reconstructed Image",
-            )
+    tab1_1, tab1_2, tab1_3 = st.tabs(["Random Generation", "Class Generation", "Batch Generation"])
+    with tab1_1:
+        model1_1 = st.radio("Random model", ["BaseVAE", "DeepVAE", "ConvVAE", "BaseCVAE", "DeepCVAE", "ConvCVAE"], horizontal = True)
+        with st.form("Image Gen Form"):
+            gen_random_1 = st.form_submit_button("Generate Image")
+            if gen_random_1:
+                recon_img, z = inferer.generate(model1_1, hidden_size, dataset)
+                st.image(
+                    recon_img.permute(1, 2, 0).detach().numpy(),
+                    width=500,
+                    caption="Reconstructed Image",
+                )
+                st.write(z)
 
 ### Reconstruction
 with tab2:

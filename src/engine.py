@@ -86,8 +86,7 @@ def train(
     Args:
         model (Callable): Model to train
         loss_function (Callable): Custom Loss Function to use for VAE training. Should consist of a reconstruction loss and regularization loss.
-        train_loader (DataLoader): Training Dataloader
-        val_loader (DataLoader): Validation Dataloader
+        data_manager(Callable): Data Manager used for training.
         no_epochs (int): No of epochs
         learning_rate (float): Learning Rate
         early_stopping (bool, optional): Whether to use EarlyStopping. Defaults to False.
@@ -189,7 +188,7 @@ def train(
     if save:
         if not model_path.exists():
             model_path.mkdir(parents=True)
-        history_path = str(model_path / "history.png")
+        history_path = str(model_path / f"history_{str(model.hidden_size)}_{str(data_manager)}.png")
         utils.plot_loss(
             history["total_loss"],
             history["recon_loss"],
@@ -209,6 +208,7 @@ def eval(
         loss_function (Callable): Custom Loss Function to use for VAE training. Should consist of a reconstruction loss and regularization loss.
         val_loader (DataLoader): Validation DataLoader
         epoch (int, optional): Current Epoch on training loop. Defaults to 0.
+        dataset (str): Dataset used for evaluation. Default to mnist.
 
     Returns:
         tuple: total_epoch_loss, recon_epoch_loss, kld_epoch_loss
@@ -230,35 +230,23 @@ def eval(
 
             if batch_idx == 0:
                 n = min(images.size(0), 8)
-                # comparison = torch.cat(
-                #     [
-                #         images[:n],
-                #         recon_batch.view(images.size(0), model.c, model.h, model.w)[:n],
-                #     ]
-                # )
 
                 model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
                 if not model_path.exists():
                     model_path.mkdir(parents=True)
-
-                # save_image(
-                #     comparison.cpu(),
-                #     str(model_path / f"reconstruction_{str(epoch)}.png"),
-                #     nrow=n,
-                # )
                 
                 ## Reconstruction
                 origin_imgs = images[:n].cpu()
                 recon_imgs = recon_batch[:n].cpu()
                 utils.compare_recon(origin_imgs, recon_imgs,
-                                    save_path=str(model_path / f"reconstruction_{str(epoch)}.png"))
+                                    save_path=str(model_path / f"reconstruction_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
                 
                 ## Generation
                 if hasattr(model, "input_embedding"):
                     all_labels = torch.tensor(range(model.num_classes), dtype=torch.int32)
                     zs = torch.randn((model.num_classes, model.hidden_size))
                     generated_imgs = model.decode(zs.to(config.DEVICE), all_labels.to(config.DEVICE)).cpu()
-                    utils.plot_images(generated_imgs, save_path=str(model_path / f"generation_{str(epoch)}_{dataset}.png"))
+                    utils.plot_images(generated_imgs, save_path=str(model_path / f"generation_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
 
     return (
         epoch_loss / len(val_loader),

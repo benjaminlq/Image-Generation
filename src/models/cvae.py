@@ -1,6 +1,6 @@
 """Models using Variational Auto Encoder
 """
-from typing import Literal
+from typing import Literal, Union
 
 import torch
 import torch.nn as nn
@@ -93,6 +93,13 @@ class BaseCVAE(BaseVAE):
         z = self.reparameterize(mu, log_var)
         out = self.decode(z, input_classes)
         return out, mu, log_var
+
+    def generate(self, cond_class: Union[int, list] = 0):
+        if isinstance(cond_class, int):
+            cond_class = [cond_class]
+        input_classes = torch.tensor(cond_class, dtype = torch.int32).to(config.DEVICE)
+        zs = torch.randn((len(input_classes), self.hidden_size)).to(config.DEVICE)
+        return (self.decode(zs, input_classes).squeeze(0), zs.squeeze(0)) if len(input_classes) == 1 else (self.decode(zs, input_classes), zs)
 
     def __str__(self):
         """Model Name"""
@@ -191,12 +198,17 @@ class ConvCVAE(BaseCVAE, ConvVAE):
         return "ConvCVAE"
     
 if __name__ == "__main__":
-    sample_imgs = torch.randn((5, 3, 28, 28))
+    sample_imgs = torch.randn((5, 3, 28, 28)).to(config.DEVICE)
     c, h, w = sample_imgs.size(1), sample_imgs.size(2), sample_imgs.size(3)
-    model = ConvCVAE(input_size=(c, h, w))
-    sample_labels = torch.randint(low=0, high=9, size=(5,))
+    model = BaseCVAE(input_size=(c, h, w))
+    model.to(config.DEVICE)
+    model.eval()
+    sample_labels = torch.randint(low=0, high=9, size=(5,)).to(config.DEVICE)
     out, mu, log_var = model(sample_imgs, sample_labels)
-    print("Reconstruced Images Batch Size:", out.size())
-    print("Mu Batch Size:", mu.size())
-    print("Log Var Batch Size:", log_var.size())
+    generated_imgs, zs = model.generate(0)
+    print(generated_imgs.size())
+    print(zs.size())
+    generated_imgs, zs = model.generate([3,4])
+    print(generated_imgs.size())
+    print(zs.size())
     
