@@ -45,8 +45,6 @@ class InferVAE:
             self.model_dict[model_name].eval().to(config.DEVICE)
             utils.load_model(self.model_dict[model_name], model_path)
 
-        print(self.model_dict.keys())
-
         infer_transforms = transforms.Compose(
             [transforms.RandomCrop(28, padding=4), transforms.ToTensor()]
         )

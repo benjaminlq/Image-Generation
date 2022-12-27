@@ -8,6 +8,7 @@ import torch.nn as nn
 import config
 from models.block import *
 
+
 class BaseVAE(nn.Module):
     """
     Variational AutoEncoder. The network attempts to model the probability distribution
@@ -31,7 +32,7 @@ class BaseVAE(nn.Module):
             common_size (int, optional): Output Size of the shared architecture between network learning
             mean and variance of the estimated latent probability distribution. Defaults to 400.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
-            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
         super(BaseVAE, self).__init__()
 
@@ -43,8 +44,7 @@ class BaseVAE(nn.Module):
         self.var_fc = nn.Linear(common_size, hidden_size)
 
         self.encoder = nn.Sequential(
-            nn.Flatten(),
-            MLPBlock(self.c * self.h * self.w, common_size)
+            nn.Flatten(), MLPBlock(self.c * self.h * self.w, common_size)
         )
         self.decoder = nn.Sequential(
             MLPBlock(hidden_size, common_size),
@@ -58,10 +58,10 @@ class BaseVAE(nn.Module):
         """Encoder converts input images to probability distribution (Gaussian) of latent vectors P(z|x)
 
         Args:
-            flattened_inputs (torch.tensor): Flattend input images
+            inputs (torch.tensor): Input images
 
         Returns:
-            torch.tensor: Mean and Diagonal Covariance Matrix of Gaussian describing the probability P(z|x)
+            Tuple(torch.tensor, torch.tensor): Mean and Diagonal Covariance Matrix of Gaussian describing the probability P(z|x)
         """
         x = self.encoder(inputs)
         mu = self.mean_fc(x)
@@ -104,17 +104,17 @@ class BaseVAE(nn.Module):
         3. Reconstruct image x_hat based on latent vector z (Decode)
 
         Args:
-            inputs (_type_): _description_
+            inputs (torch.tensor): Input Images
 
         Returns:
-            _type_: _description_
+            tuple(torch.tensor, torch.tensor, torch.tensor): Reconstructed Images, Mean of Latent Distribution, Variance of Latent Distribution
         """
 
         mu, log_var = self.encode(inputs)
         z = self.reparameterize(mu, log_var)
         out = self.decode(z)
         return out, mu, log_var
-    
+
     def generate(self, num_samples: int = 1):
         """Generate a sample or batch of samples randomly from prior P(z) ~ N(0,1)
 
@@ -125,7 +125,11 @@ class BaseVAE(nn.Module):
             Tuple(torch.tensor, torch.tensor): (Generated Img Batch, Latent Vector Batch)
         """
         z = torch.randn((num_samples, self.hidden_size)).to(config.DEVICE)
-        return (self.decode(z).squeeze(0), z.squeeze(0)) if num_samples == 1 else (self.decode(z), z)
+        return (
+            (self.decode(z).squeeze(0), z.squeeze(0))
+            if num_samples == 1
+            else (self.decode(z), z)
+        )
 
     def __str__(self):
         """Model Name"""
@@ -140,14 +144,14 @@ class DeepVAE(BaseVAE):
         hidden_size: int = config.HIDDEN_SIZE,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
     ):
-        """Deep VAE Model
+        """Deep VAE Model with more linear layers than BaseVAE model.
 
         Args:
             input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
             common_size (int, optional): Output Size of the shared architecture between network learning
             mean and variance of the estimated latent probability distribution. Defaults to 400.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
-            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
         super(DeepVAE, self).__init__(input_size, common_size, hidden_size, activation)
 
@@ -156,7 +160,7 @@ class DeepVAE(BaseVAE):
             MLPBlock(self.c * self.h * self.w, 784),
             MLPBlock(784, 392),
             MLPBlock(392, 196),
-            MLPBlock(196, self.common_size)
+            MLPBlock(196, self.common_size),
         )
 
         self.decoder = nn.Sequential(
@@ -184,14 +188,15 @@ class ConvVAE(BaseVAE):
         activation: Literal["Tanh", "Sigmoid"] = "Tanh",
         kernel_size: int = 3,
     ):
-        """Deep VAE Model with Convolutional Encoder and Decoder
+        """Deep Convolutional VAE Model. Use Convolutional units for feature extraction (Downsampling) and Transpose Convolution (Upsampling)
+        to reconstruct the images.
 
         Args:
             input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
             common_size (int, optional): Output Size of the shared architecture between network learning
             mean and variance of the estimated latent probability distribution. Defaults to 400.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
-            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Tanh.
+            activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
         super(ConvVAE, self).__init__(input_size, common_size, hidden_size, activation)
 
@@ -206,9 +211,15 @@ class ConvVAE(BaseVAE):
 
         ## Input = c, h, w
         self.encoder = nn.Sequential(
-            ConvBlock(self.c, 16, kernel_size=self.kernel_size, padding=self.padding),  # 16, h, w
-            DownSample(16, 32, kernel_size=self.kernel_size, padding=self.padding),  # 32, h/2, w/2
-            DownSample(32, 64, kernel_size=self.kernel_size, padding=self.padding),  # 64, h/4, w/4
+            ConvBlock(
+                self.c, 16, kernel_size=self.kernel_size, padding=self.padding
+            ),  # 16, h, w
+            DownSample(
+                16, 32, kernel_size=self.kernel_size, padding=self.padding
+            ),  # 32, h/2, w/2
+            DownSample(
+                32, 64, kernel_size=self.kernel_size, padding=self.padding
+            ),  # 64, h/4, w/4
             nn.Flatten(),  # 64 & (h/4) * (w/4)
             MLPBlock(64 * self.final_height * self.final_width, 784),
             MLPBlock(784, 392),
@@ -221,7 +232,9 @@ class ConvVAE(BaseVAE):
             MLPBlock(common_size, 392),
             MLPBlock(392, 784),
             MLPBlock(784, 64 * self.final_height * self.final_width),
-            nn.Unflatten(1, (64, self.final_height, self.final_width)),  # 64 & (h/4) * (w/4)
+            nn.Unflatten(
+                1, (64, self.final_height, self.final_width)
+            ),  # 64 & (h/4) * (w/4)
             UpSample(64, 32, kernel_size=self.kernel_size, padding=self.padding),
             UpSample(32, 16, kernel_size=self.kernel_size, padding=self.padding),
             ConvBlock(16, self.c, kernel_size=self.kernel_size, padding=self.padding),
