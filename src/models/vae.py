@@ -12,9 +12,9 @@ from models.block import *
 class BaseVAE(nn.Module):
     """
     Variational AutoEncoder. The network attempts to model the probability distribution
-    of the latent manifold of the images. The prior probability of the latent space is regularized
-    by assuming that the P(z) follows a Standard Gaussian distribution. The training process involves
-    learning the conditional probability (encoder) P(z|x) based on observed training data followed by learning
+    of the images in latent space. The prior probability P(z) of the latent space is regularized
+    to match a Standard Gaussian distribution. The training process involves learning the conditional
+    probability (encoder) P(z|x) based on observed training data followed by learning
     the reconstruction function (decoder) to reconstruct the image from latent vector z.
     """
 
@@ -29,8 +29,7 @@ class BaseVAE(nn.Module):
 
         Args:
             input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
-            common_size (int, optional): Output Size of the shared architecture between network learning
-            mean and variance of the estimated latent probability distribution. Defaults to 400.
+            common_size (int, optional): Output Size of shared architecture between feature extraction network and distribution estimation network. Defaults to 400.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
             activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
