@@ -4,6 +4,7 @@ import json
 import random
 from glob import glob
 from pathlib import Path
+from typing import Optional, Union
 
 import torch
 from torchvision import datasets, transforms
@@ -82,7 +83,12 @@ class InferVAE:
         return target_img
 
     def reconstruction(
-        self, target_img: torch.tensor, model_type: str, hidden_size: int, dataset: str
+        self,
+        target_img: torch.tensor,
+        model_type: str,
+        hidden_size: int,
+        dataset: str,
+        class_input_idx: Optional[int] = None,
     ):
         """Reconstruction Feature. Take a random image of a specified class from the dataset, generate lalent vector distribution and
         reconstruct using Decoder. Quality of reconstruction is based on model type and hidden size of latent vector.
@@ -92,15 +98,23 @@ class InferVAE:
             model_type (str): Model checkpoint to load for reconstruction process
             hidden_size (int): Number of dimensions (features) of Latent Vector Space
             dataset (str): Dataset used for inference
+            class_input_idx (int): Input Class index for conditional VAE model. Default to None.
 
         Returns:
-            Tuple(torch.tensor, torch.tensor): Target Image, Reconstructed Image
+            torch.tensor: Reconstructed Image
         """
         model_name = "_".join([model_type, str(hidden_size), dataset])
 
-        recon_img, _, _ = self.model_dict[model_name](
-            target_img.unsqueeze(0).to(config.DEVICE)
-        )
+        if hasattr(self.model_dict[model_name], "num_classes"):
+            assert class_input_idx is not None, "Must provide input class"
+            recon_img, _, _ = self.model_dict[model_name](
+                target_img.unsqueeze(0).to(config.DEVICE),
+                torch.tensor([class_input_idx], dtype=torch.int32).to(config.DEVICE),
+            )
+        else:
+            recon_img, _, _ = self.model_dict[model_name](
+                target_img.unsqueeze(0).to(config.DEVICE)
+            )
 
         return recon_img.squeeze(0).cpu()
 
@@ -182,9 +196,60 @@ class InferVAE:
         imgs = [first_img] + intermediate_imgs + [second_img]
         return make_grid(imgs, nrow=len(imgs))
 
-    def generate(
+    def generate_image(
         self,
-    )
+        model_type: str,
+        hidden_size: int,
+        dataset: str,
+        cond_class: Optional[Union[int, list]] = None,
+    ):
+        """Generate an image or batch of images
+
+        Args:
+            model_type (str): Model Type
+            hidden_size (int): No of dimensions of latent subspace
+            dataset (str): Dataset Used
+            cond_class (Optional[Union[int, list]], optional): Input class labels for conditional VAE models. Defaults to None.
+
+        Returns:
+            Tuple(torch.tensor, torch.tensor): Generated Images, Latent Vectors
+        """
+        model_name = "_".join([model_type, str(hidden_size), dataset])
+        if hasattr(self.model_dict[model_name], "num_classes"):
+            if not cond_class:
+                cond_class = random.choice(list(config.CLASSES[dataset].values()))
+            imgs, zs = self.model_dict[model_name].generate(cond_class)
+        else:
+            imgs, zs = self.model_dict[model_name].generate()
+
+        return imgs.cpu(), zs.cpu()
+
+    def generate_batch(
+        self,
+        model_type: str,
+        hidden_size: int,
+        dataset: str,
+        num_images: int = 8,
+    ):
+        """Generate a batch of images containing samples of all classes
+
+        Args:
+            model_type (str): Model Type
+            hidden_size (int): No of dimensions of latent subspace
+            dataset (str): Dataset Used
+            num_images (int, optional): Number of samples to be generated for each class. Defaults to 8.
+
+        Returns:
+            torch.tensor: Grid of images with shape num_classes x num_images
+        """
+        all_labels = []
+        for i in range(len(config.CLASSES[dataset])):
+            all_labels += [i] * num_images
+
+        imgs, _ = self.generate_image(model_type, hidden_size, dataset, all_labels)
+        img_grid = make_grid(imgs, nrow=num_images)
+        return img_grid
+
 
 if __name__ == "__main__":
     infer_cls = InferVAE()
