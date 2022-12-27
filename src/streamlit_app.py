@@ -1,7 +1,7 @@
 """Streamlit App
 """
 import streamlit as st
-import torch
+from torchvision.utils import make_grid
 
 import config
 from dataloaders import dataloaders
@@ -12,6 +12,11 @@ st.set_page_config("VAE_GAN")
 
 @st.cache(allow_output_mutation=True)
 def initialize_inferer():
+    """Initialize inference module
+
+    Returns:
+        Callable: Inferencen Module
+    """
     return InferVAE()
 
 
@@ -43,33 +48,88 @@ with tab1:
     st.markdown(
         "Generate a random sample from Standard Gaussian Distribution from the Latent Space"
     )
-    tab1_1, tab1_2, tab1_3 = st.tabs(["Random Generation", "Class Generation", "Batch Generation"])
-    with tab1_1:
-        model1_1 = st.radio("Random model", ["BaseVAE", "DeepVAE", "ConvVAE", "BaseCVAE", "DeepCVAE", "ConvCVAE"], horizontal = True)
+    tab1_1, tab1_2, tab1_3 = st.tabs(
+        ["Random Generation", "Class Generation", "Batch Generation"]
+    )
+
+    with tab1_1:  # Random Generation
+        model1_1 = st.radio(
+            "Random model",
+            ["BaseVAE", "DeepVAE", "ConvVAE", "BaseCVAE", "DeepCVAE", "ConvCVAE"],
+            horizontal=True,
+        )
         with st.form("Image Gen Form"):
             gen_random_1 = st.form_submit_button("Generate Image")
             if gen_random_1:
-                recon_img, z = inferer.generate(model1_1, hidden_size, dataset)
+                recon_img, z = inferer.generate_image(model1_1, hidden_size, dataset)
                 st.image(
                     recon_img.permute(1, 2, 0).detach().numpy(),
-                    width=500,
+                    width=400,
                     caption="Reconstructed Image",
                 )
                 st.write(z)
 
+    with tab1_2:  # Conditional Generation
+        col_1_2_1, col_1_2_2 = st.columns([4, 6], gap="large")
+        with col_1_2_1:
+            class_name_1_2 = st.selectbox(
+                "Cond Gen Class", config.CLASSES[dataset].keys()
+            )
+            class_idx_1_2 = config.CLASSES[dataset][class_name_1_2]
+        with col_1_2_2:
+            model1_2 = st.radio(
+                "Conditional model",
+                ["BaseCVAE", "DeepCVAE", "ConvCVAE"],
+                horizontal=True,
+            )
+        with st.form("Conditional Image Gen Form"):
+            gen_random_2 = st.form_submit_button("Generate Image")
+            if gen_random_2:
+                imgs, _ = inferer.generate_image(
+                    model1_2, hidden_size, dataset, [class_idx_1_2] * 16
+                )
+                cond_img_grid = make_grid(imgs, nrow=4)
+                st.image(
+                    cond_img_grid.permute(1, 2, 0).detach().numpy(),
+                    width=650,
+                    caption=f"Batch of {class_name_1_2} Images",
+                )
+
+    with tab1_3:  # Batch Generation
+        model1_3 = st.radio(
+            "Batch Generation model",
+            ["BaseCVAE", "DeepCVAE", "ConvCVAE"],
+            horizontal=True,
+        )
+        with st.form("Batch Image Gen Form"):
+            gen_random_3 = st.form_submit_button("Generate Batch Image")
+            if gen_random_3:
+                batch_img_grid = inferer.generate_batch(
+                    model1_3, hidden_size, dataset, num_images=8
+                )
+                st.image(
+                    batch_img_grid.permute(1, 2, 0).detach().numpy(),
+                    width=650,
+                    caption="Batch of images for all classes",
+                )
+
 ### Reconstruction
 with tab2:
     st.header("Image Reconstruction")
-    recon_class_no = st.selectbox("Class", config.CLASSES[dataset].keys())
+    recon_class_name = st.selectbox("Class", config.CLASSES[dataset].keys())
+    recon_class_idx = config.CLASSES[dataset][recon_class_name]
+    model2 = st.radio(
+        "Recon model",
+        ["BaseVAE", "DeepVAE", "ConvVAE", "BaseCVAE", "DeepCVAE", "ConvCVAE"],
+        horizontal=True,
+    )
     target_col, recon_col = st.columns(2)
 
     with st.form("Image Recon Form"):
         sample_img_recon = st.form_submit_button("Reconstruct Image")
         if sample_img_recon:
             with target_col:
-                target_img = inferer.sample_image(
-                    config.CLASSES[dataset][recon_class_no], dataset
-                )
+                target_img = inferer.sample_image(recon_class_idx, dataset)
                 st.image(
                     target_img.permute(1, 2, 0).detach().numpy(),
                     width=300,
@@ -78,7 +138,7 @@ with tab2:
 
             with recon_col:
                 recon_img = inferer.reconstruction(
-                    target_img, model_type, hidden_size, dataset
+                    target_img, model2, hidden_size, dataset, recon_class_idx
                 )
                 st.image(
                     recon_img.permute(1, 2, 0).detach().numpy(),
@@ -88,6 +148,9 @@ with tab2:
 
 with tab3:
     st.header("Image Interpolation")
+    model3 = st.radio(
+        "Interpolate model", ["BaseVAE", "DeepVAE", "ConvVAE"], horizontal=True
+    )
     img1, img2 = st.columns(2)
 
     with img1:
@@ -106,7 +169,7 @@ with tab3:
         interpolate_submit = st.form_submit_button("Interpolate Image")
         if interpolate_submit:
             intermediate_images = inferer.interpolate(
-                first_img, second_img, model_type, hidden_size, dataset
+                first_img, second_img, model3, hidden_size, dataset
             )
             st.image(intermediate_images.permute(1, 2, 0).detach().numpy(), width=650)
 
