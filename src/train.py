@@ -18,7 +18,6 @@ def get_argument_parser():
     - Load Existing Checkpoint
     - Early Stopping Setting
     - Patience Epoch Count
-    - Hidden Size
 
     Returns:
         args: Arguments for training models
@@ -36,7 +35,7 @@ def get_argument_parser():
     parser.add_argument(
         "-bs",
         "--batch_size",
-        help="The number of images in a batch (default: 64)",
+        help="The number of images in a batch (default: 32)",
         type=int,
         default=config.BATCH_SIZE,
     )
@@ -92,7 +91,7 @@ def get_argument_parser():
         type=str,
         default="mse",
     )
-
+    
     parser.add_argument(
         "-hd",
         "--hidden",
@@ -109,19 +108,19 @@ def get_argument_parser():
 if __name__ == "__main__":
     args = get_argument_parser()
     datamodule, img_size = dataloaders[args.dataset]
-    data_manager = datamodule(batch_size=args.batch_size)
-    model = models[args.model](
-        input_size=img_size, hidden_size=args.hidden, **config.MODEL_PARAMS[args.model]
-    )
-    print(model)
     if args.loss.lower() == "mse":
         loss_function = MSE_VAE_loss
+        data_manager = datamodule(batch_size=args.batch_size, std_normalize=False)
+        model = models[args.model](input_size=img_size, hidden_size=args.hidden, activation="Sigmoid", **config.MODEL_PARAMS[args.model])
     elif args.loss.lower() == "bce":
         loss_function = BCE_VAE_loss
+        data_manager = datamodule(batch_size=args.batch_size, std_normalize=False)
+        model = models[args.model](input_size=img_size, hidden_size=args.hidden, activation="Sigmoid", **config.MODEL_PARAMS[args.model])
     else:
         raise Exception("Incorrect Settings for Loss Function")
 
     LOGGER.info(f"Training {str(model)} using {args.loss.lower()} loss function")
+    
     train(
         model,
         loss_function,
@@ -134,5 +133,5 @@ if __name__ == "__main__":
         save=True,
     )
     LOGGER.info(f"{str(model)}: Training completed")
-
-# python3 ./src/train.py -md BaseVAE -ls bce -e 25 --dataset fmnist
+    
+# python3 src/train.py -e 20 -md ConvVAE -ls mse

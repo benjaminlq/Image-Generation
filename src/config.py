@@ -60,6 +60,7 @@ MODEL_PARAMS = {
     "BaseVAE": {},
     "DeepVAE": {},
     "ConvVAE": {"kernel_size": 3},
+    "BaseCVAE": {},
     "GAN": {},
     "Cond_GAN": {},
 }

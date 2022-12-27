@@ -127,10 +127,14 @@ def train(
         model.train()
         epoch_loss, recon_epoch_loss, kld_epoch_loss = 0, 0, 0
         tk0 = tqdm(train_loader, total=len(train_loader))
-        for batch_idx, (images, _) in enumerate(tk0):
+        for batch_idx, (images, labels) in enumerate(tk0):
             images = images.to(config.DEVICE)
             optimizer.zero_grad()
-            recon_batch, mu, log_var = model(images)
+            if hasattr(model, "input_embedding"):
+                labels = labels.to(config.DEVICE)
+                recon_batch, mu, log_var = model(images, labels)
+            else:
+                recon_batch, mu, log_var = model(images)
             loss, RECON, KLD = loss_function(recon_batch, images, mu, log_var)
 
             loss.backward()
@@ -150,7 +154,7 @@ def train(
         )
 
         val_total_loss, val_recon_loss, val_kld_loss = eval(
-            model, loss_function, val_loader, epoch
+            model, loss_function, val_loader, epoch, str(data_manager)
         )
         scheduler.step(val_total_loss)
         history["total_loss"].append(val_total_loss)
@@ -196,7 +200,7 @@ def train(
 
 
 def eval(
-    model: Callable, loss_function: Callable, val_loader: DataLoader, epoch: int = 0
+    model: Callable, loss_function: Callable, val_loader: DataLoader, epoch: int = 0, dataset: str = "mnist",
 ):
     """Evaluate Function Engine
 
@@ -212,9 +216,13 @@ def eval(
     model.eval()
     with torch.no_grad():
         epoch_loss, recon_epoch_loss, kld_epoch_loss = 0, 0, 0
-        for batch_idx, (images, _) in enumerate(val_loader):
+        for batch_idx, (images, labels) in enumerate(val_loader):
             images = images.to(config.DEVICE)
-            recon_batch, mu, log_var = model(images)
+            if hasattr(model, "input_embedding"):
+                labels = labels.to(config.DEVICE)
+                recon_batch, mu, log_var = model(images, labels)
+            else:    
+                recon_batch, mu, log_var = model(images)
             loss, RECON, KLD = loss_function(recon_batch, images, mu, log_var)
             epoch_loss += loss.item()
             recon_epoch_loss += RECON.item()
@@ -222,22 +230,35 @@ def eval(
 
             if batch_idx == 0:
                 n = min(images.size(0), 8)
-                comparison = torch.cat(
-                    [
-                        images[:n],
-                        recon_batch.view(images.size(0), model.c, model.h, model.w)[:n],
-                    ]
-                )
+                # comparison = torch.cat(
+                #     [
+                #         images[:n],
+                #         recon_batch.view(images.size(0), model.c, model.h, model.w)[:n],
+                #     ]
+                # )
 
                 model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
                 if not model_path.exists():
                     model_path.mkdir(parents=True)
 
-                save_image(
-                    comparison.cpu(),
-                    str(model_path / f"reconstruction_{str(epoch)}.png"),
-                    nrow=n,
-                )
+                # save_image(
+                #     comparison.cpu(),
+                #     str(model_path / f"reconstruction_{str(epoch)}.png"),
+                #     nrow=n,
+                # )
+                
+                ## Reconstruction
+                origin_imgs = images[:n].cpu()
+                recon_imgs = recon_batch[:n].cpu()
+                utils.compare_recon(origin_imgs, recon_imgs,
+                                    save_path=str(model_path / f"reconstruction_{str(epoch)}.png"))
+                
+                ## Generation
+                if hasattr(model, "input_embedding"):
+                    all_labels = torch.tensor(range(model.num_classes), dtype=torch.int32)
+                    zs = torch.randn((model.num_classes, model.hidden_size))
+                    generated_imgs = model.decode(zs.to(config.DEVICE), all_labels.to(config.DEVICE)).cpu()
+                    utils.plot_images(generated_imgs, save_path=str(model_path / f"generation_{str(epoch)}_{dataset}.png"))
 
     return (
         epoch_loss / len(val_loader),

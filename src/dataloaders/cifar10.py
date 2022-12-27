@@ -76,5 +76,6 @@ if __name__ == "__main__":
     print("Train Batch labels size:", len(labels))
     test_loader = data_manager.test_loader()
     samples = next(iter(test_loader))
+    print(samples)
     print("Test Batch images size:", images.size())
     print("Test Batch labels size:", len(labels))
