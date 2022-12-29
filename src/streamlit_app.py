@@ -36,7 +36,7 @@ with st.sidebar:
     _, input_size = dataloaders[dataset]
     with st.expander("See sample images"):
         st.image(data_imgs[dataset])
-    hidden_size = st.radio("Hidden Size", [2, 64])
+    hidden_size = st.radio("Hidden Size", [2, 16, 64])
 
 tab1, tab2, tab3 = st.tabs(
     ["Image Generation", "Image Reconstruction", "Image Interpolation"]
