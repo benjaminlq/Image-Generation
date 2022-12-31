@@ -127,6 +127,7 @@ class GAN:
         self.img_shape = img_shape
         self.hidden_size = hidden_size
         self.conditional = conditional
+        self.num_classes = num_classes
         self.emb_size = emb_size
         self.k = k
     #    self.label_smoothing = label_smoothing
@@ -160,15 +161,43 @@ class GAN:
         fake_labels: Optional[Union[int, torch.tensor]] = None,
         ):
         self.optimizer_D.zero_grad()
+        
         real_bs = real_imgs.size(0)
-        real_targets = torch.ones((real_bs, 1), requires_grad=False)
-        if self.label_smoothing:
-            assert self.label_smoothing >= 0 and self.label_smoothing < 1, "Invalid smoothing factor (must be between 0 and 1)"
-            real_targets = real_targets - self.label_smoothing
+        real_targets = torch.ones((real_bs, 1), requires_grad=False, defice = config.DEVICE)
         real_loss_D = self.adversarial_loss(
-            self.discriminator(real_imgs, real_labels), 
+            self.discriminator(real_imgs, real_labels), real_targets
         )
         
+        fake_bs = fake_imgs.size(0)
+        fake_targets = torch.zeros((fake_bs, 1), requires_grad=False, device=config.DEVICE)
+        fake_loss_D = self.adversarial_loss(
+            self.discriminator(fake_imgs, fake_labels), fake_targets
+        )
+        
+        d_loss = (real_loss_D + fake_loss_D)/2
+        d_loss.backward()
+        self.optimizer_D.step()
+        
+    def train_generator(self, batch_size: int = 32):
+        self.optimizer_G.zero_grad()
+        zs = torch.randn((batch_size, self.hidden_size), device = config.DEVICE) # (bs, hidden_size)
+        if self.conditional:
+            gen_labels = torch.randint(0, self.num_classes, size = (batch_size,), device=config.DEVICE)
+        else:
+            gen_labels = None
+        gen_imgs = self.generator(zs, gen_labels)
+        g_loss = self.adversarial_loss(
+            self.discriminator(gen_imgs, gen_labels),
+            torch.ones((batch_size, 1), requires_grad=True, device=config.DEVICE)
+        )
+        g_loss.backward()
+        self.optimizer_G.step()
+        
+        return g_loss, gen_imgs, gen_labels
+    
+    def train(
+        self, no_epochs: int, 
+    )
 
 if __name__ == "__main__":
     generator = Generator(hidden_size = 64, img_shape=(3,28,28), conditional=False).to(config.DEVICE)
