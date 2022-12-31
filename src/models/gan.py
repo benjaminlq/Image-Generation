@@ -45,7 +45,7 @@ class Generator(nn.Module):
         self.linear4 = MLPBlock(784, self.img_shape[0] * self.img_shape[1] * self.img_shape[2])
         self.tanh = nn.Tanh()
         
-    def forward(self, z: torch.tensor, cond_class: Optional[Union[int, list]] = None) -> torch.tensor:
+    def forward(self, z: torch.tensor, cond_class: Optional[Union[int, torch.tensor]] = None) -> torch.tensor:
         """Forward Pass
 
         Args:
@@ -57,8 +57,8 @@ class Generator(nn.Module):
         """
         if cond_class:
             if isinstance(cond_class, int):
-                cond_class = [cond_class]
-            input_embs = self.embedding(torch.tensor(cond_class, dtype=torch.int32, device = config.DEVICE))
+                cond_class = torch.tensor([cond_class], dtype = torch.int32)
+            input_embs = self.embedding(cond_class.to(config.DEVICE))
             z = torch.cat((z, input_embs), dim = 1)
         
         x = self.dropout(self.linear1(z))
@@ -95,12 +95,12 @@ class Discriminator(nn.Module):
         self.linear4 = MLPBlock(196, 64)
         self.out = nn.Linear(64, 1)
     
-    def forward(self, imgs: torch.tensor, cond_class: Optional[Union[int, list]] = None) -> torch.tensor:
+    def forward(self, imgs: torch.tensor, cond_class: Optional[Union[int, torch.tensor]] = None) -> torch.tensor:
         x = self.flatten(imgs)
         if cond_class:
             if isinstance(cond_class, int):
-                cond_class = [cond_class, int]
-            input_embs = self.embedding(torch.tensor(cond_class, dtype=torch.int32, device = config.DEVICE))
+                cond_class = torch.tensor([cond_class, int], dtype = torch.int32)
+            input_embs = self.embedding(cond_class.to(config.DEVICE))
             x = torch.cat((x, input_embs), dim = 1)
         x = self.dropout(self.linear1(x))
         x = self.dropout(self.linear2(x))
@@ -122,14 +122,14 @@ class GAN:
         learning_rate: float = 1e-3,
         k: int = 1,
         loss: Literal["mse","bce"] = "bce",
-        label_smoothing: float = 0.0,
+    #    label_smoothing: float = 0.0,
     ):
         self.img_shape = img_shape
         self.hidden_size = hidden_size
         self.conditional = conditional
         self.emb_size = emb_size
         self.k = k
-        self.label_smoothing = label_smoothing
+    #    self.label_smoothing = label_smoothing
         
         if loss == "bce":
             self.adversarial_loss = nn.BCEWithLogitsLoss()
@@ -152,7 +152,23 @@ class GAN:
         )
         self.optimizer_D = torch.optim.Adam(params=self.discriminator.params(), lr=learning_rate, betas=(0.5, 0.999))
         
-    
+    def train_discriminator(
+        self,
+        real_imgs: torch.tensor,
+        fake_imgs: torch.tensor,
+        real_labels: Optional[Union[int, torch.tensor]] = None,
+        fake_labels: Optional[Union[int, torch.tensor]] = None,
+        ):
+        self.optimizer_D.zero_grad()
+        real_bs = real_imgs.size(0)
+        real_targets = torch.ones((real_bs, 1), requires_grad=False)
+        if self.label_smoothing:
+            assert self.label_smoothing >= 0 and self.label_smoothing < 1, "Invalid smoothing factor (must be between 0 and 1)"
+            real_targets = real_targets - self.label_smoothing
+        real_loss_D = self.adversarial_loss(
+            self.discriminator(real_imgs, real_labels), 
+        )
+        
 
 if __name__ == "__main__":
     generator = Generator(hidden_size = 64, img_shape=(3,28,28), conditional=False).to(config.DEVICE)
