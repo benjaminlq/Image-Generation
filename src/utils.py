@@ -2,17 +2,17 @@
 """
 import os
 import random
-import argparse
-from typing import Sequence
+from typing import Sequence, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
+from torchvision.utils import save_image
 
 import config
 from config import LOGGER
-
+from models.gan import Generator
 
 def save_model(model, path: str):
     """Save Model
@@ -123,98 +123,31 @@ def plot_loss(total_loss: list, recon_loss: list, kld_loss: list, save_path=Fals
         plt.savefig(save_path)
     else:
         plt.show()
-
-def get_argument_parser():
-    """Input Parameters for training model
-    - No of Epochs
-    - Batch Size
-    - Learning Rate
-    - Model Type
-    - Load Existing Checkpoint
-    - Early Stopping Setting
-    - Patience Epoch Count
-
-    Returns:
-        args: Arguments for training models
-    """
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "-e",
-        "--epochs",
-        help="How many epochs you need to run (default: 10)",
-        type=int,
-        default=config.EPOCHS,
-    )
-
-    parser.add_argument(
-        "-bs",
-        "--batch_size",
-        help="The number of images in a batch (default: 32)",
-        type=int,
-        default=config.BATCH_SIZE,
-    )
-
-    parser.add_argument(
-        "-lr",
-        "--learning_rate",
-        help="The learning rate used for optimizer (default: 1e-4)",
-        type=float,
-        default=config.LEARNING_RATE,
-    )
-
-    parser.add_argument(
-        "-md",
-        "--model",
-        help="Type of model instance used for training",
-        type=str,
-        default="BaseVAE",
-    )
-
-    parser.add_argument(
-        "-l", "--load", help="Load Model from previous ckpt", type=str, default=False
-    )
-
-    parser.add_argument(
-        "-es",
-        "--earlystop",
-        help="Whether EarlyStop during model training",
-        type=bool,
-        default=False,
-    )
-
-    parser.add_argument(
-        "-p",
-        "--patience",
-        help="How Many epoches for Early Stopping",
-        type=int,
-        default=5,
-    )
-
-    parser.add_argument(
-        "-d",
-        "--dataset",
-        help="Which Dataset to use",
-        type=str,
-        default="mnist",
-    )
-
-    parser.add_argument(
-        "-ls",
-        "--loss",
-        help="Which Loss to use",
-        type=str,
-        default="mse",
-    )
+        
+def plot_gan_loss(generator_loss: list, discriminator_loss: list, save_path: Optional[str] = None):
+    plt.figure(figsize=(12,6))
+    plt.subplot(1,2,1)
+    plt.plot(generator_loss, color = "red")
+    plt.title("Generator Loss vs Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Generator Loss")
     
-    parser.add_argument(
-        "-hd",
-        "--hidden",
-        help="Length of latent vector",
-        type=int,
-        default=128,
-    )
+    plt.subplot(1,2,2)
+    plt.plot(discriminator_loss, color = "blue")
+    plt.title("Discriminator Loss vs Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Discriminator Loss")
+    
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
 
-    args = parser.parse_args()
-
-    return args
+def sample_gan_image(generator: Generator, save_path: str, n_row: int = 8):
+    z = torch.randn((n_row * generator.num_classes, generator.hidden_size), device = config.DEVICE)
+    if generator.conditional:
+        labels = torch.tensor([num for _ in range(n_row) for num in range(generator.num_classes)], dtype = torch.int32, device = config.DEVICE)
+    else:
+        labels = None
+    gen_imgs = generator(z, labels)
+    save_image(gen_imgs, save_path, nrow=generator.num_classes, normalize=True)

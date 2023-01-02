@@ -17,7 +17,7 @@ class MNISTDataLoader(BaseDataLoader):
         self,
         data_path: Union[str, Path] = config.DATA_PATH,
         batch_size: int = 32,
-        std_normalize: bool = False,
+        std_normalize: bool = True,
     ):
         """MNIST Data Module
 
@@ -32,14 +32,14 @@ class MNISTDataLoader(BaseDataLoader):
                 [
                     transforms.Resize(28),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=0.5, std=0.5),
+                    transforms.Normalize([0.5], [0.5]),
                 ]
             )
             test_transform = transforms.Compose(
                 [
                     transforms.Resize(28),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=0.5, std=0.5),
+                    transforms.Normalize([0.5], [0.5]),
                 ]
             )
         else:
@@ -74,6 +74,8 @@ if __name__ == "__main__":
     images, labels = next(iter(train_loader))
     print("Train Batch images size:", images.size())
     print("Train Batch labels size:", len(labels))
+    print("Min:",images.min())
+    print("Max:",images.max())
     test_loader = data_manager.test_loader()
     samples = next(iter(test_loader))
     print(samples)

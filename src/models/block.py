@@ -38,6 +38,32 @@ class MLPBlock(nn.Module):
             torch.tensor: Output Tensor
         """
         return self.linear(inputs)
+    
+class ReLUBlock(MLPBlock):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+    ):
+        super(ReLUBlock, self).__init__(in_features=in_features, out_features=out_features)
+        self.linear = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.BatchNorm1d(out_features),
+            nn.ReLU()
+        )
+        
+class ELUBlock(MLPBlock):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+    ):
+        super(ELUBlock, self).__init__(in_features=in_features, out_features=out_features)
+        self.linear = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.BatchNorm1d(out_features),
+            nn.ELU()
+        )
 
 class ConvBlock(nn.Module):
     """Basic Conv Block with BatchNorm and Activation"""

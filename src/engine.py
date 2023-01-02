@@ -1,6 +1,6 @@
 """Train & Eval functions
 """
-from typing import Callable
+from typing import Callable, Literal
 
 import torch
 import torch.nn as nn
@@ -12,6 +12,7 @@ from tqdm import tqdm
 import config
 import utils
 from config import LOGGER
+from models.gan import Generator, Discriminator
 
 
 def BCE_VAE_loss(
@@ -231,25 +232,138 @@ def eval(
             if batch_idx == 0:
                 n = min(images.size(0), 8)
 
-                model_path = config.ARTIFACT_PATH / "model_ckpt" / str(model)
-                if not model_path.exists():
-                    model_path.mkdir(parents=True)
+                img_path = config.ARTIFACT_PATH / "model_ckpt" / str(model) / "images"
+                if not img_path.exists():
+                    img_path.mkdir(parents=True)
                 
                 ## Reconstruction
                 origin_imgs = images[:n].cpu()
                 recon_imgs = recon_batch[:n].cpu()
                 utils.compare_recon(origin_imgs, recon_imgs,
-                                    save_path=str(model_path / f"reconstruction_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
+                                    save_path=str(img_path / f"reconstruction_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
                 
                 ## Generation
                 if hasattr(model, "input_embedding"):
                     all_labels = torch.tensor(range(model.num_classes), dtype=torch.int32)
                     zs = torch.randn((model.num_classes, model.hidden_size))
                     generated_imgs = model.decode(zs.to(config.DEVICE), all_labels.to(config.DEVICE)).cpu()
-                    utils.plot_images(generated_imgs, save_path=str(model_path / f"generation_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
+                    utils.plot_images(generated_imgs, save_path=str(img_path / f"generation_{str(model.hidden_size)}_{dataset}_{str(epoch)}.png"))
 
     return (
         epoch_loss / len(val_loader),
         recon_epoch_loss / len(val_loader),
         kld_epoch_loss / len(val_loader),
     )
+    
+def train_gan(
+    generator: Generator,
+    discriminator: Discriminator,
+    data_manager: Callable,
+    loss_function: Literal["bce","mse"] = "bce",
+    no_epochs: int = config.EPOCHS,
+    learning_rate: float = config.LEARNING_RATE,
+    k: int = 1,
+    save: bool = True,
+    load: bool = False,
+):
+    assert generator.conditional == discriminator.conditional, "Generator and Discriminator Conditional must match"
+    conditional = generator.conditional
+    optimizer_G = torch.optim.Adam(params = generator.parameters(), lr = learning_rate, betas=(0.5, 0.999))
+    optimizer_D = torch.optim.Adam(params = discriminator.parameters(), lr = learning_rate, betas=(0.5, 0.999))
+    if loss_function == "bce":
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        criterion = nn.MSELoss()
+    train_loader = data_manager.train_loader()
+    generator.to(config.DEVICE)
+    discriminator.to(config.DEVICE)
+    LOGGER.info(f"Training Model {str(generator)} on {config.DEVICE}.")
+    
+    if load:
+        generator_path = config.ARTIFACT_PATH / "model_ckpt" / str(generator) / f"{str(generator)}.pt"
+        discriminator_path = config.ARTIFACT_PATH / "model_ckpt" / str(discriminator) / f"{str(discriminator)}.pt"
+        if not (generator_path.exists() or discriminator.exists()):
+            LOGGER.warning(
+                f"Ckpt_path for {str(generator)} does not exist. Training New Model"
+            )
+        else:
+            utils.load_model(generator, generator_path)
+            utils.load_model(discriminator, discriminator_path)
+    
+    model_path = config.ARTIFACT_PATH / "model_ckpt" / str(generator)
+    loss_history = {"generator":[], "discriminator": []}
+        
+    for epoch in range(no_epochs):
+        generator.train()
+        discriminator.train()
+        
+        tk0 = tqdm(train_loader, total=len(train_loader))
+        for batch_idx, (real_imgs, real_labels) in enumerate(tk0):
+            # Generate 1 batch of real images
+            bs = real_imgs.size(0)
+            real_imgs = real_imgs.to(config.DEVICE)
+            real_labels = real_labels.to(config.DEVICE)
+            
+            for _ in range(k):
+                
+                # Generate 1 batch of fake images
+                zs = torch.randn((bs, generator.hidden_size), device = config.DEVICE)
+                if conditional:
+                    gen_labels = torch.randint(0, generator.num_classes, size = (bs,), device = config.DEVICE)
+                else:
+                    real_labels = None
+                    gen_labels = None
+                gen_imgs = generator(zs, gen_labels)
+                
+                # Train Discriminator
+                
+                optimizer_D.zero_grad()
+                real_targets = torch.ones((bs, 1), requires_grad=False, device = config.DEVICE)
+                real_probs = discriminator(real_imgs, real_labels)
+                real_loss_D = criterion(real_probs, real_targets)
+                
+                fake_targets = torch.zeros((bs, 1), requires_grad=False, device = config.DEVICE)
+                fake_probs = discriminator(gen_imgs, gen_labels)
+                fake_loss_D = criterion(fake_probs, fake_targets)
+                
+                d_loss = (real_loss_D + fake_loss_D) / 2
+                d_loss.backward()
+                optimizer_D.step()
+            
+            # Train Generator
+            optimizer_G.zero_grad()
+            zs = torch.randn((bs, generator.hidden_size), device = config.DEVICE)
+            if conditional:
+                gen_labels = torch.randint(0, generator.num_classes, size = (bs,), device = config.DEVICE)
+            else:
+                gen_labels = None
+                
+            gen_imgs = generator(zs, gen_labels)
+            fake_targets = torch.ones((bs, 1), requires_grad=False, device = config.DEVICE)
+            fake_probs = discriminator(gen_imgs, gen_labels)
+            g_loss = criterion(fake_probs, fake_targets)
+            g_loss.backward()
+            optimizer_G.step()
+        
+            if (batch_idx + 1) % 200 == 0:
+                print(f"Epoch {epoch+1} - batch {batch_idx+1}: Generator Loss = {g_loss.item()}, Discriminator Loss = {d_loss.item()}")
+            
+        LOGGER.info(f"Epoch {epoch+1}: Generator Loss = {g_loss.item()}, Discriminator Loss = {d_loss.item()}")
+        if save:
+            img_path = model_path / "images"
+            if not img_path.exists():
+                img_path.mkdir(parents=True)
+            utils.sample_gan_image(generator, str(img_path/f"gan_{generator.hidden_size}_{str(data_manager)}_{epoch}.png"))
+            utils.save_model(generator, str(model_path/f"{str(generator)}_{generator.hidden_size}_{str(data_manager)}.pt"))
+            utils.save_model(discriminator, str(model_path/f"{str(discriminator)}_{generator.hidden_size}_{str(data_manager)}.pt"))
+
+        loss_history["generator"].append(g_loss.item())
+        loss_history["discriminator"].append(d_loss.item())
+    
+    if save:
+        if not model_path.exists():
+            model_path.mkdir(parents=True)
+        history_path = str(model_path/f"History_{str(generator.hidden_size)}_{str(data_manager)}.png")
+        utils.plot_gan_loss(loss_history["generator"], loss_history["discriminator"], history_path)
+
+    return loss_history
