@@ -38,32 +38,6 @@ class MLPBlock(nn.Module):
             torch.tensor: Output Tensor
         """
         return self.linear(inputs)
-    
-class ReLUBlock(MLPBlock):
-    def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-    ):
-        super(ReLUBlock, self).__init__(in_features=in_features, out_features=out_features)
-        self.linear = nn.Sequential(
-            nn.Linear(in_features, out_features),
-            nn.BatchNorm1d(out_features),
-            nn.ReLU()
-        )
-        
-class ELUBlock(MLPBlock):
-    def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-    ):
-        super(ELUBlock, self).__init__(in_features=in_features, out_features=out_features)
-        self.linear = nn.Sequential(
-            nn.Linear(in_features, out_features),
-            nn.BatchNorm1d(out_features),
-            nn.ELU()
-        )
 
 class ConvBlock(nn.Module):
     """Basic Conv Block with BatchNorm and Activation"""
@@ -180,3 +154,47 @@ class UpSample(nn.Module):
             torch.tensor: Output Tensor
         """
         return self.downsample(inputs)
+    
+class ConvTranspose2DBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 4,
+        stride: int = 2,
+        padding: int = 1,
+        bias: bool = False,
+    ):
+        super(ConvTranspose2DBlock, self).__init__()
+        self.conv = nn.Sequential(
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, bias = bias),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        
+    def forward(self, inputs):
+        return self.conv(inputs)
+    
+class Conv2DBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 4,
+        stride: int = 2,
+        padding: int = 1,
+        bias: bool = False,
+    ):
+        super(Conv2DBlock, self).__init__()
+        assert out_channels % 2 == 0, "Number of output channels must be divisible by 2"
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels//2, kernel_size, stride, padding, bias=bias),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(out_channels//2, out_channels, kernel_size, stride, padding, bias=bias),
+            nn.BatchNorm2d(out_channels),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+        
+    def forward(self, inputs):
+        return self.conv(inputs)
+    

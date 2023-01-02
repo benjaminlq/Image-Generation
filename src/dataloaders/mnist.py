@@ -17,6 +17,7 @@ class MNISTDataLoader(BaseDataLoader):
         self,
         data_path: Union[str, Path] = config.DATA_PATH,
         batch_size: int = 32,
+        image_size: int = 28,
         std_normalize: bool = True,
     ):
         """MNIST Data Module
@@ -30,14 +31,14 @@ class MNISTDataLoader(BaseDataLoader):
         if std_normalize:
             train_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                     transforms.Normalize([0.5], [0.5]),
                 ]
             )
             test_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                     transforms.Normalize([0.5], [0.5]),
                 ]
@@ -45,13 +46,13 @@ class MNISTDataLoader(BaseDataLoader):
         else:
             train_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                 ]
             )
             test_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                 ]
             )

@@ -17,6 +17,7 @@ class FashionMNISTDataLoader(BaseDataLoader):
         self,
         data_path: Union[str, Path] = config.DATA_PATH,
         batch_size: int = 32,
+        image_size: int = 28,
         std_normalize: bool = False,
     ):
         """FashionMNIST Data Module
@@ -30,14 +31,14 @@ class FashionMNISTDataLoader(BaseDataLoader):
         if std_normalize:
             train_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=0.5, std=0.5),
                 ]
             )
             test_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=0.5, std=0.5),
                 ]
@@ -45,13 +46,13 @@ class FashionMNISTDataLoader(BaseDataLoader):
         else:
             train_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                 ]
             )
             test_transform = transforms.Compose(
                 [
-                    transforms.Resize(28),
+                    transforms.Resize(image_size),
                     transforms.ToTensor(),
                 ]
             )
