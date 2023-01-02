@@ -25,7 +25,7 @@ class BaseCVAE(BaseVAE):
         input_size: tuple = (1, 28, 28),
         common_size: int = 256,
         hidden_size: int = config.HIDDEN_SIZE,
-        cond_size: int = 128,
+        emb_size: int = 128,
         num_classes: int = 10,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
         **kwargs,
@@ -36,7 +36,7 @@ class BaseCVAE(BaseVAE):
             input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
             common_size (int, optional): Output Size of shared architecture between feature extraction network and distribution estimation network. Defaults to 400.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
-            cond_size (int, optional): Size of label embedding vector. Defaults to 128.
+            emb_size (int, optional): Size of label embedding vector. Defaults to 128.
             num_classes (int, optional): Number of training conditional classes. Defaults to 10.
             activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
@@ -48,18 +48,18 @@ class BaseCVAE(BaseVAE):
             **kwargs,
         )
 
-        self.cond_size = cond_size
+        self.emb_size = emb_size
         self.num_classes = num_classes
-        self.input_embedding = nn.Embedding(num_classes, cond_size)
+        self.input_embedding = nn.Embedding(num_classes, emb_size)
 
-        self.mean_fc = nn.Linear(common_size + cond_size, hidden_size)
-        self.var_fc = nn.Linear(common_size + cond_size, hidden_size)
+        self.mean_fc = nn.Linear(common_size + emb_size, hidden_size)
+        self.var_fc = nn.Linear(common_size + emb_size, hidden_size)
 
         self.encoder = nn.Sequential(
             nn.Flatten(), MLPBlock(self.c * self.h * self.w, common_size)
         )
         self.decoder = nn.Sequential(
-            MLPBlock(hidden_size + cond_size, common_size),
+            MLPBlock(hidden_size + emb_size, common_size),
             nn.Linear(common_size, self.c * self.h * self.w),
             nn.Unflatten(1, (self.c, self.h, self.w)),
         )
@@ -152,7 +152,7 @@ class DeepCVAE(BaseCVAE):
         input_size: tuple = (1, 28, 28),
         common_size: int = 256,
         hidden_size: int = config.HIDDEN_SIZE,
-        cond_size: int = 128,
+        emb_size: int = 128,
         num_classes: int = 10,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
     ):
@@ -162,20 +162,20 @@ class DeepCVAE(BaseCVAE):
             input_size (int, optional): Input Image Dimension in format (C, H, W) Defaults to (1,28,28).
             common_size (int, optional): Output Size of shared architecture between feature extraction network and distribution estimation network. Defaults to 256.
             hidden_size (int, optional): Dimension of Latent representation. Defaults to 128.
-            cond_size (int, optional): Size of label embedding vector. Defaults to 128.
+            emb_size (int, optional): Size of label embedding vector. Defaults to 128.
             num_classes (int, optional): Number of training conditional classes. Defaults to 10.
             activation (Tanh or Sigmoid): Activation of the output. For BCELoss, activation function must be Sigmoid. Default to Sigmoid.
         """
 
         super(DeepCVAE, self).__init__(
-            input_size, common_size, hidden_size, cond_size, num_classes, activation
+            input_size, common_size, hidden_size, emb_size, num_classes, activation
         )
 
         self.mean_fc = nn.Sequential(
-            MLPBlock(common_size + cond_size, 256), nn.Linear(256, hidden_size)
+            MLPBlock(common_size + emb_size, 256), nn.Linear(256, hidden_size)
         )
         self.var_fc = nn.Sequential(
-            MLPBlock(common_size + cond_size, 256), nn.Linear(256, hidden_size)
+            MLPBlock(common_size + emb_size, 256), nn.Linear(256, hidden_size)
         )
 
         self.encoder = nn.Sequential(
@@ -186,7 +186,7 @@ class DeepCVAE(BaseCVAE):
         )
 
         self.decoder = nn.Sequential(
-            MLPBlock(self.hidden_size + cond_size, 256),
+            MLPBlock(self.hidden_size + emb_size, 256),
             MLPBlock(256, 392),
             MLPBlock(392, 784),
             nn.Linear(784, self.c * self.h * self.w),
@@ -206,7 +206,7 @@ class ConvCVAE(BaseCVAE, ConvVAE):
         input_size: tuple = (1, 28, 28),
         common_size: int = 256,
         hidden_size: int = config.HIDDEN_SIZE,
-        cond_size: int = 128,
+        emb_size: int = 128,
         num_classes: int = 10,
         activation: Literal["Tanh", "Sigmoid"] = "Sigmoid",
         kernel_size: int = 3,
@@ -226,17 +226,17 @@ class ConvCVAE(BaseCVAE, ConvVAE):
             input_size=input_size,
             common_size=common_size,
             hidden_size=hidden_size,
-            cond_size=cond_size,
+            emb_size=emb_size,
             num_classes=num_classes,
             activation=activation,
             kernel_size=kernel_size,
         )
 
         self.mean_fc = nn.Sequential(
-            MLPBlock(common_size + cond_size, 256), nn.Linear(256, hidden_size)
+            MLPBlock(common_size + emb_size, 256), nn.Linear(256, hidden_size)
         )
         self.var_fc = nn.Sequential(
-            MLPBlock(common_size + cond_size, 256), nn.Linear(256, hidden_size)
+            MLPBlock(common_size + emb_size, 256), nn.Linear(256, hidden_size)
         )
 
         ## Input = c, h, w
@@ -258,7 +258,7 @@ class ConvCVAE(BaseCVAE, ConvVAE):
 
         ## Input = hidden_size
         self.decoder = nn.Sequential(
-            MLPBlock(hidden_size + cond_size, common_size),
+            MLPBlock(hidden_size + emb_size, common_size),
             MLPBlock(common_size, 392),
             MLPBlock(392, 784),
             MLPBlock(784, 64 * self.final_height * self.final_width),

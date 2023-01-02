@@ -55,13 +55,23 @@ with tab1:
     with tab1_1:  # Random Generation
         model1_1 = st.radio(
             "Random model",
-            ["BaseVAE", "DeepVAE", "ConvVAE", "BaseCVAE", "DeepCVAE", "ConvCVAE"],
+            [
+                "BaseVAE",
+                "DeepVAE",
+                "ConvVAE",
+                "BaseCVAE",
+                "DeepCVAE",
+                "ConvCVAE",
+                "GAN",
+                "CGAN",
+            ],
             horizontal=True,
         )
         with st.form("Image Gen Form"):
             gen_random_1 = st.form_submit_button("Generate Image")
             if gen_random_1:
                 recon_img, z = inferer.generate_image(model1_1, hidden_size, dataset)
+                print(recon_img.size())
                 st.image(
                     recon_img.permute(1, 2, 0).detach().numpy(),
                     width=400,
@@ -79,7 +89,7 @@ with tab1:
         with col_1_2_2:
             model1_2 = st.radio(
                 "Conditional model",
-                ["BaseCVAE", "DeepCVAE", "ConvCVAE"],
+                ["BaseCVAE", "DeepCVAE", "ConvCVAE", "CGAN"],
                 horizontal=True,
             )
         with st.form("Conditional Image Gen Form"):
@@ -98,7 +108,7 @@ with tab1:
     with tab1_3:  # Batch Generation
         model1_3 = st.radio(
             "Batch Generation model",
-            ["BaseCVAE", "DeepCVAE", "ConvCVAE"],
+            ["BaseCVAE", "DeepCVAE", "ConvCVAE", "CGAN"],
             horizontal=True,
         )
         with st.form("Batch Image Gen Form"):
@@ -149,28 +159,46 @@ with tab2:
 with tab3:
     st.header("Image Interpolation")
     model3 = st.radio(
-        "Interpolate model", ["BaseVAE", "DeepVAE", "ConvVAE"], horizontal=True
+        "Interpolate model", ["BaseVAE", "DeepVAE", "ConvVAE", "GAN"], horizontal=True
     )
     img1, img2 = st.columns(2)
-
-    with img1:
-        digit_class1 = st.selectbox("First Class", config.CLASSES[dataset].keys())
-        first_img = inferer.sample_image(config.CLASSES[dataset][digit_class1], dataset)
-        st.image(first_img.permute(1, 2, 0).detach().numpy(), width=300)
-
-    with img2:
-        digit_class2 = st.selectbox("Second Class", config.CLASSES[dataset].keys())
-        second_img = inferer.sample_image(
-            config.CLASSES[dataset][digit_class2], dataset
-        )
-        st.image(second_img.permute(1, 2, 0).detach().numpy(), width=300)
-
-    with st.form("Image Interpolate Form"):
-        interpolate_submit = st.form_submit_button("Interpolate Image")
-        if interpolate_submit:
-            intermediate_images = inferer.interpolate(
-                first_img, second_img, model3, hidden_size, dataset
+    if model3 in ["GAN", "ConvGAN"]:
+        with st.form("Image Interpolate Form"):
+            interpolate_submit = st.form_submit_button("Interpolate Image")
+            if interpolate_submit:
+                first_img, second_img, intermediate_images = inferer.interpolate_gan(
+                    model3, hidden_size, dataset
+                )
+                with img1:
+                    st.image(first_img.permute(1, 2, 0).detach().numpy(), width=300)
+                with img2:
+                    st.image(second_img.permute(1, 2, 0).detach().numpy(), width=300)
+                st.image(
+                    intermediate_images.permute(1, 2, 0).detach().numpy(), width=650
+                )
+    else:
+        with img1:
+            digit_class1 = st.selectbox("First Class", config.CLASSES[dataset].keys())
+            first_img = inferer.sample_image(
+                config.CLASSES[dataset][digit_class1], dataset
             )
-            st.image(intermediate_images.permute(1, 2, 0).detach().numpy(), width=650)
+            st.image(first_img.permute(1, 2, 0).detach().numpy(), width=300)
+
+        with img2:
+            digit_class2 = st.selectbox("Second Class", config.CLASSES[dataset].keys())
+            second_img = inferer.sample_image(
+                config.CLASSES[dataset][digit_class2], dataset
+            )
+            st.image(second_img.permute(1, 2, 0).detach().numpy(), width=300)
+
+        with st.form("Image Interpolate Form"):
+            interpolate_submit = st.form_submit_button("Interpolate Image")
+            if interpolate_submit:
+                intermediate_images = inferer.interpolate(
+                    first_img, second_img, model3, hidden_size, dataset
+                )
+                st.image(
+                    intermediate_images.permute(1, 2, 0).detach().numpy(), width=650
+                )
 
 # streamlit run ./src/streamlit_app.py

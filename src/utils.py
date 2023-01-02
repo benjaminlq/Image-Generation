@@ -2,7 +2,7 @@
 """
 import os
 import random
-from typing import Sequence, Optional
+from typing import Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +13,7 @@ from torchvision.utils import save_image
 import config
 from config import LOGGER
 from models.gan import Generator
+
 
 def save_model(model, path: str):
     """Save Model
@@ -123,30 +124,54 @@ def plot_loss(total_loss: list, recon_loss: list, kld_loss: list, save_path=Fals
         plt.savefig(save_path)
     else:
         plt.show()
-        
-def plot_gan_loss(generator_loss: list, discriminator_loss: list, save_path: Optional[str] = None):
-    plt.figure(figsize=(12,6))
-    plt.subplot(1,2,1)
-    plt.plot(generator_loss, color = "red")
+
+
+def plot_gan_loss(
+    generator_loss: list, discriminator_loss: list, save_path: Optional[str] = None
+):
+    """Plot Loss Function for GAN training
+
+    Args:
+        generator_loss (list): Generator Loss History
+        discriminator_loss (list): Discriminator Loss History
+        save_path (Optional[str], optional): Path to save img. Defaults to None.
+    """
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.plot(generator_loss, color="red")
     plt.title("Generator Loss vs Epoch")
     plt.xlabel("Epoch")
     plt.ylabel("Generator Loss")
-    
-    plt.subplot(1,2,2)
-    plt.plot(discriminator_loss, color = "blue")
+
+    plt.subplot(1, 2, 2)
+    plt.plot(discriminator_loss, color="blue")
     plt.title("Discriminator Loss vs Epoch")
     plt.xlabel("Epoch")
     plt.ylabel("Discriminator Loss")
-    
+
     if save_path:
         plt.savefig(save_path)
     else:
         plt.show()
 
+
 def sample_gan_image(generator: Generator, save_path: str, n_row: int = 8):
-    z = torch.randn((n_row * generator.num_classes, generator.hidden_size), device = config.DEVICE)
+    """Sample batch of random GAN images
+
+    Args:
+        generator (Generator): Generator Module
+        save_path (str): Path to save image
+        n_row (int, optional): Number of rows to per conditional class. Defaults to 8.
+    """
+    z = torch.randn(
+        (n_row * generator.num_classes, generator.hidden_size), device=config.DEVICE
+    )
     if generator.conditional:
-        labels = torch.tensor([num for _ in range(n_row) for num in range(generator.num_classes)], dtype = torch.int32, device = config.DEVICE)
+        labels = torch.tensor(
+            [num for _ in range(n_row) for num in range(generator.num_classes)],
+            dtype=torch.int32,
+            device=config.DEVICE,
+        )
     else:
         labels = None
     gen_imgs = generator(z, labels)
