@@ -1,6 +1,6 @@
 """GAN Model
 """
-from typing import Optional, Union
+from typing import Union
 
 import torch
 import torch.nn as nn
@@ -38,6 +38,7 @@ class Generator(nn.Module):
         self.hidden_size = hidden_size
         self.img_shape = input_size
         self.num_classes = num_classes
+        self.conditional = False
 
         self.linear_1 = MLPBlock(self.hidden_size, 128)
         self.linear_2 = MLPBlock(128, 256)
@@ -109,6 +110,7 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.img_shape = input_size
         self.num_classes = num_classes
+        self.conditional = False
 
         self.linear_1 = nn.Linear(
             self.img_shape[0] * self.img_shape[1] * self.img_shape[2], 784
@@ -166,7 +168,7 @@ class CGenerator(Generator):
         super(CGenerator, self).__init__(
             input_size, hidden_size, num_classes, dropout_rate
         )
-
+        self.conditional = True
         self.emb_size = emb_size
         self.embedding = nn.Embedding(num_classes, emb_size)
         self.linear_1 = MLPBlock(hidden_size + emb_size, 128)
@@ -242,7 +244,7 @@ class CDiscriminator(Discriminator):
             emb_size (int, optional): Size of class embedding vector. Defaults to 32.
         """
         super(CDiscriminator, self).__init__(input_size, dropout_rate, num_classes)
-
+        self.conditional = True
         self.embedding = nn.Embedding(num_classes, emb_size)
         self.linear_1 = nn.Linear(
             self.img_shape[0] * self.img_shape[1] * self.img_shape[2] + emb_size, 784
@@ -294,11 +296,12 @@ class ConvGenerator(Generator):
             hidden_size (int, optional): Hidden size of input noise latent vector to Generator. Defaults to 64.
             num_classes (int, optional): Number of conditional classes in each dataset. Defaults to 10.
             dropout_rate (float, optional): Dropout Rate to use for dropout units. Defaults to 0.2.
-            emb_size (int, optional): Size of class embedding vector. Defaults to 32.
         """
         super(ConvGenerator, self).__init__(
             input_size, hidden_size, num_classes, dropout_rate
         )
+        self.conditional = False
+        self.resize = transforms.Resize(self.img_shape[1])
         self.conv_transpose_1 = ConvTranspose2DBlock(hidden_size, 256, 4, 1, 0)
         # if self.conditional:
         #     self.emb_size = emb_size
@@ -323,8 +326,22 @@ class ConvGenerator(Generator):
         x = self.conv_transpose_1(z)
         x = self.conv_transpose_2(x)
         x = self.conv_transpose_3(x)
-        imgs = self.activation(self.out(x))
+        imgs = self.tanh(self.out(x))
         return imgs
+
+    def generate(self, num_samples: int = 1):
+        """Randomly Generate a batch of images from generator.
+
+        Args:
+            num_samples (int, optional): Number of samples in random batch. Default to 1.
+
+        Returns:
+            Tuple(torch.tensor, torch.tensor): Generated Images, Input Latent Noise Vectors.
+        """
+        z = torch.randn((num_samples, self.hidden_size), device=config.DEVICE)
+        imgs = (self(z) + 1) / 2
+        imgs = self.resize(imgs)
+        return (imgs.squeeze(0), z.squeeze(0)) if num_samples == 1 else (imgs, z)
 
     def __str__(self):
         """Model Name"""
@@ -336,14 +353,22 @@ class ConvDiscriminator(nn.Module):
 
     def __init__(
         self,
-        input_size: tuple = (1, 32, 32),
+        input_size: tuple = (1, 28, 28),
         num_classes: int = 10,
     ):
-        """To be Updated"""
+        """Deep Convolutional Discriminator Module. Use 2D Convolution for feature extraction.
+
+        Args:
+            input_size (tuple, optional): Size of images to be generated. Defaults to (1, 32, 32).
+            num_classes (int, optional): Number of conditional classes in each dataset. Defaults to 10.
+        """
         super(ConvDiscriminator, self).__init__()
-        self.resize = transforms.Resize(img_shape[1])
+        self.conditional = False
+        self.img_shape = input_size
+        self.num_classes = num_classes
+        self.resize = transforms.Resize(32)
         self.convblock_1 = nn.Sequential(
-            nn.Conv2d(img_shape[0], 32, 4, 2, 1, bias=False),
+            nn.Conv2d(self.img_shape[0], 32, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(32, 64, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64),
@@ -356,10 +381,15 @@ class ConvDiscriminator(nn.Module):
         )
         self.conv_out = nn.Conv2d(128, 1, 4, 1, 0)
 
-    def forward(
-        self, imgs: torch.tensor, cond_class: Optional[Union[int, torch.tensor]] = None
-    ) -> torch.tensor:
-        """To be updated"""
+    def forward(self, imgs: torch.tensor) -> torch.tensor:
+        """Forward Pass
+
+        Args:
+            imgs (torch.tensor): Real and Generated images for discriminator classification task.
+
+        Returns:
+            torch.tensor: Probability of image being real.
+        """
         # bs, c, h, w
         imgs = self.resize(imgs)  # (c, 32, 32)
         x = self.convblock_1(imgs)  # (64, 8, 8)
@@ -377,6 +407,6 @@ if __name__ == "__main__":
     sample_zs = torch.randn(size=(5, 64)).to(config.DEVICE)
     output_imgs = generator(sample_zs)
     print(str(generator), output_imgs.size())
-    discriminator = ConvDiscriminator(img_shape=(1, 32, 32)).to(config.DEVICE)
+    discriminator = ConvDiscriminator(input_size=(1, 28, 28)).to(config.DEVICE)
     probs = discriminator(output_imgs)
     print(str(discriminator), probs.size())

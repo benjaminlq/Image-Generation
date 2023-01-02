@@ -172,7 +172,8 @@ def sample_gan_image(generator: Generator, save_path: str, n_row: int = 8):
             dtype=torch.int32,
             device=config.DEVICE,
         )
+        gen_imgs = generator(z, labels)
     else:
-        labels = None
-    gen_imgs = generator(z, labels)
+        gen_imgs = generator(z)
+
     save_image(gen_imgs, save_path, nrow=generator.num_classes, normalize=True)

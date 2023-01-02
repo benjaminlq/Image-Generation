@@ -309,6 +309,7 @@ def train_gan(
         generator.conditional == discriminator.conditional
     ), "Generator and Discriminator Conditional must match"
     conditional = generator.conditional
+
     optimizer_G = torch.optim.Adam(
         params=generator.parameters(), lr=learning_rate, betas=(0.5, 0.999)
     )
@@ -367,10 +368,9 @@ def train_gan(
                     gen_labels = torch.randint(
                         0, generator.num_classes, size=(bs,), device=config.DEVICE
                     )
+                    gen_imgs = generator(zs, gen_labels)
                 else:
-                    real_labels = None
-                    gen_labels = None
-                gen_imgs = generator(zs, gen_labels)
+                    gen_imgs = generator(zs)
 
                 # Train Discriminator
 
@@ -378,13 +378,17 @@ def train_gan(
                 real_targets = torch.ones(
                     (bs, 1), requires_grad=False, device=config.DEVICE
                 )
-                real_probs = discriminator(real_imgs, real_labels)
-                real_loss_D = criterion(real_probs, real_targets)
-
                 fake_targets = torch.zeros(
                     (bs, 1), requires_grad=False, device=config.DEVICE
                 )
-                fake_probs = discriminator(gen_imgs, gen_labels)
+                if conditional:
+                    real_probs = discriminator(real_imgs, real_labels)
+                    fake_probs = discriminator(gen_imgs, gen_labels)
+                else:
+                    real_probs = discriminator(real_imgs)
+                    fake_probs = discriminator(gen_imgs)
+
+                real_loss_D = criterion(real_probs, real_targets)
                 fake_loss_D = criterion(fake_probs, fake_targets)
 
                 d_loss = (real_loss_D + fake_loss_D) / 2
@@ -398,14 +402,16 @@ def train_gan(
                 gen_labels = torch.randint(
                     0, generator.num_classes, size=(bs,), device=config.DEVICE
                 )
+                gen_imgs = generator(zs, gen_labels)
+                fake_probs = discriminator(gen_imgs, gen_labels)
             else:
-                gen_labels = None
+                gen_imgs = generator(zs)
+                fake_probs = discriminator(gen_imgs)
 
-            gen_imgs = generator(zs, gen_labels)
             fake_targets = torch.ones(
                 (bs, 1), requires_grad=False, device=config.DEVICE
             )
-            fake_probs = discriminator(gen_imgs, gen_labels)
+
             g_loss = criterion(fake_probs, fake_targets)
             g_loss.backward()
             optimizer_G.step()

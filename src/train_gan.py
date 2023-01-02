@@ -1,12 +1,13 @@
 """Training Script
 """
 import argparse
-import config
 
+import config
 from config import LOGGER
 from dataloaders import dataloaders
 from engine import train_gan
-from models import Generator, Discriminator
+from models import models
+
 
 def get_argument_parser():
     """Input Parameters for training model
@@ -50,17 +51,21 @@ def get_argument_parser():
     )
 
     parser.add_argument(
-        "-c",
-        "--conditional",
-        help="Type of model instance used for training",
-        action="store_true"
+        "--generator",
+        help="Type of generator model instance used for training",
+        type=str,
+        default="GAN",
     )
 
     parser.add_argument(
-        "-l",
-        "--load",
-        help="Load Model from previous ckpt",
-        action="store_true"
+        "--discriminator",
+        help="Type of discriminator model instance used for training",
+        type=str,
+        default="Discriminator",
+    )
+
+    parser.add_argument(
+        "-l", "--load", help="Load Model from previous ckpt", action="store_true"
     )
 
     parser.add_argument(
@@ -78,7 +83,7 @@ def get_argument_parser():
         type=str,
         default="bce",
     )
-    
+
     parser.add_argument(
         "-hd",
         "--hidden",
@@ -86,7 +91,7 @@ def get_argument_parser():
         type=int,
         default=128,
     )
-    
+
     parser.add_argument(
         "-k",
         "--d_g_ratio",
@@ -99,15 +104,16 @@ def get_argument_parser():
 
     return args
 
+
 if __name__ == "__main__":
     args = get_argument_parser()
     datamodule, img_size = dataloaders[args.dataset]
-    data_manager = datamodule(batch_size = args.batch_size, std_normalize=True)
-    generator = Generator(img_shape=img_size, hidden_size=args.hidden, conditional=args.conditional)
-    discriminator = Discriminator(img_shape=img_size, conditional=args.conditional)
+    data_manager = datamodule(batch_size=args.batch_size, std_normalize=True)
+    generator = models[args.generator](input_size=img_size, hidden_size=args.hidden)
+    discriminator = models[args.discriminator](input_size=img_size)
 
     LOGGER.info(f"Training {str(generator)} using {args.loss.lower()} loss function")
-    
+
     train_gan(
         generator=generator,
         discriminator=discriminator,
@@ -120,5 +126,5 @@ if __name__ == "__main__":
         save=True,
     )
     LOGGER.info(f"{str(generator)}: Training completed")
-    
+
 # python3 src/train_gan.py -e 50 -bs 32 -ls bce -d mnist -c False
