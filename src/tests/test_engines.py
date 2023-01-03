@@ -4,8 +4,8 @@ import torch
 
 from dataloaders import dataloaders
 from engine import BCE_VAE_loss, MSE_VAE_loss, train, train_gan
-from models import BaseVAE
-from models import Generator, Discriminator
+from models import BaseVAE, Discriminator, Generator
+
 
 def test_BCE_loss():
     """Test Behaviour of BCE loss"""
@@ -38,16 +38,23 @@ def test_train():
     train(model, BCE_VAE_loss, data_manager, no_epochs=1, save=False)
     train(model, MSE_VAE_loss, data_manager, no_epochs=1, save=False)
 
+
 def test_train_GAN():
+    """Test GAN training"""
     datamodule, img_size = dataloaders["mnist"]
     data_manager = datamodule(batch_size=250)
-    generator = Generator(img_shape=img_size)
-    discriminator = Discriminator(img_shape=img_size)
+    generator = Generator(input_size=img_size)
+    discriminator = Discriminator(input_size=img_size)
     train_gan(generator, discriminator, data_manager, no_epochs=1, save=False)
-    train_gan(generator, discriminator, data_manager, loss_function = "mse", no_epochs=1, save=False)
-    cgenerator = Generator(img_shape=img_size, conditional=True)
-    cdiscriminator = Discriminator(img_shape=img_size, conditional=True)
-    train_gan(cgenerator, cdiscriminator, data_manager, no_epochs=1, save=False)
-    
+    train_gan(
+        generator,
+        discriminator,
+        data_manager,
+        loss_function="mse",
+        no_epochs=1,
+        save=False,
+    )
+
+
 if __name__ == "__main__":
     test_train_GAN()

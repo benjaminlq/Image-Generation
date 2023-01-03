@@ -64,6 +64,7 @@ with tab1:
                 "ConvCVAE",
                 "GAN",
                 "CGAN",
+                "ConvGAN",
             ],
             horizontal=True,
         )
@@ -159,7 +160,9 @@ with tab2:
 with tab3:
     st.header("Image Interpolation")
     model3 = st.radio(
-        "Interpolate model", ["BaseVAE", "DeepVAE", "ConvVAE", "GAN"], horizontal=True
+        "Interpolate model",
+        ["BaseVAE", "DeepVAE", "ConvVAE", "GAN", "ConvGAN"],
+        horizontal=True,
     )
     img1, img2 = st.columns(2)
     if model3 in ["GAN", "ConvGAN"]:
