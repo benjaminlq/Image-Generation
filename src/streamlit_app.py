@@ -72,7 +72,6 @@ with tab1:
             gen_random_1 = st.form_submit_button("Generate Image")
             if gen_random_1:
                 recon_img, z = inferer.generate_image(model1_1, hidden_size, dataset)
-                print(recon_img.size())
                 st.image(
                     recon_img.permute(1, 2, 0).detach().numpy(),
                     width=400,
