@@ -222,6 +222,8 @@ class InferVAE:
             intermediate_img = self.model_dict[model_name](hidden.unsqueeze(0)).squeeze(
                 0
             )
+            if hasattr(self.model_dict[model_name], "resize"):
+                intermediate_img = self.model_dict[model_name].resize(intermediate_img)
             intermediate_imgs.append((intermediate_img + 1) / 2)
 
         imgs = [first_img] + intermediate_imgs + [second_img]

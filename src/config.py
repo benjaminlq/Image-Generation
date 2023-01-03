@@ -64,7 +64,9 @@ MODEL_PARAMS = {
     "DeepCVAE": {},
     "ConvCVAE": {},
     "GAN": {},
-    "Cond_GAN": {},
+    "CGAN": {},
+    "ConvGAN": {},
+    "ConvCGAN": {},
 }
 
 ### Logging configurations

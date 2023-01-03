@@ -543,57 +543,94 @@ class ConvCGenerator(CGenerator):
         return "ConvCGAN"
 
 
-# class ConvCDiscriminator(CDiscriminator):
-# """Conditional Discriminator Module"""
+class ConvCDiscriminator(nn.Module):
+    """Conditional Discriminator Module"""
 
-# def __init__(
-#     self,
-#     input_size: tuple = (1, 28, 28),
-# #    dropout_rate: float = 0.4,
-#     num_classes: int = 10,
-#     emb_size: int = 32,
-# ):
-#     """Conditional Discriminator Module. Concatenate class label with image features during discrimination loss training. The discriminator will model conditional probability P(X=real|C) when classifying images conditioned on class labels.
+    def __init__(
+        self,
+        input_size: tuple = (1, 28, 28),
+        num_classes: int = 10,
+    ):
+        """Conditional Discriminator Module. Concatenate class label with image features during discrimination loss training. The discriminator will model conditional probability P(X=real|C) when classifying images conditioned on class labels.
 
-#     Args:
-#         input_size (tuple, optional): Size of images to be generated. Defaults to (1, 28, 28)
-#         dropout_rate (float, optional): Dropout Rate to use for dropout units. Defaults to 0.4
-#         num_classes (int, optional): Number of conditional classes in each dataset. Defaults to 10.
-#         emb_size (int, optional): Size of class embedding vector. Defaults to 32.
-#     """
-#     super(CDiscriminator, self).__init__(input_size, dropout_rate, num_classes)
-#     self.conditional = True
-#     self.embedding = nn.Embedding(num_classes, emb_size)
-#     self.linear_1 = nn.Linear(
-#         self.img_shape[0] * self.img_shape[1] * self.img_shape[2] + emb_size, 784
-#     )
+        Args:
+            input_size (tuple, optional): Size of images to be generated. Defaults to (1, 28, 28)
+            dropout_rate (float, optional): Dropout Rate to use for dropout units. Defaults to 0.4
+            num_classes (int, optional): Number of conditional classes in each dataset. Defaults to 10.
+            emb_size (int, optional): Size of class embedding vector. Defaults to 32.
+        """
+        super(ConvCDiscriminator, self).__init__()
+        self.conditional = True
+        self.in_channels = input_size[0]
+        self.img_size = 32
+        self.num_classes = num_classes
+        self.resize = transforms.Resize(self.img_size)
 
-# def forward(
-#     self, imgs: torch.tensor, cond_class: Union[int, torch.tensor]
-# ) -> torch.tensor:
-#     """Forward Pass
+        self.conv_1 = nn.Conv2d(self.in_channels, 32, 4, 2, 1)
+        self.conv_label = nn.Conv2d(self.num_classes, 32, 4, 2, 1)
+        self.conv_2 = nn.Conv2d(64, 128, 4, 2, 1)
+        self.bn_2 = nn.BatchNorm2d(128)
+        self.conv_3 = nn.Conv2d(128, 256, 4, 2, 1)
+        self.bn_3 = nn.BatchNorm2d(256)
+        self.conv_out = nn.Conv2d(256, 1, 4, 1, 0)
 
-#     Args:
-#         imgs (torch.tensor): Real or Fake Images
-#         cond_class (Union[int, torch.tensor]): Class for input images.
+        self.leaky_relu = nn.LeakyReLU(0.2, inplace=True)
+        self.apply(self.init_weights)
 
-#     Returns:
-#         torch.tensor: Probabilities of images being real.
-#     """
-#     x = self.flatten(imgs)
-#     if isinstance(cond_class, int):
-#         cond_class = torch.tensor([cond_class, int], dtype=torch.int32)
-#     input_embs = self.embedding(cond_class.to(config.DEVICE))
-#     x = torch.cat((x, input_embs), dim=1)
-#     x = self.dropout(self.activation(self.linear_1(x)))
-#     x = self.dropout(self.activation(self.linear_2(x)))
-#     x = self.dropout(self.activation(self.linear_3(x)))
-#     probs = self.out(x)
-#     return probs
+    def forward(
+        self, imgs: torch.tensor, cond_class: Union[int, torch.tensor]
+    ) -> torch.tensor:
+        """Forward Pass
 
-# def __str__(self):
-#     """Model Name"""
-#     return "ConvCDiscriminator"
+        Args:
+            imgs (torch.tensor): Real or Fake Images
+            cond_class (Union[int, torch.tensor]): Class for input images.
+
+        Returns:
+            torch.tensor: Probabilities of images being real.
+        """
+        # Imgs: bs, c, h, w
+        if isinstance(cond_class, int):
+            cond_class = torch.tensor(
+                [cond_class, int], dtype=torch.int32, device=config.DEVICE
+            )
+
+        labels = torch.zeros(
+            (len(cond_class), self.num_classes, self.img_size, self.img_size),
+            device=config.DEVICE,
+        )
+        for idx, label in enumerate(cond_class):
+            labels[idx, label.item(), :, :] = torch.ones(
+                (self.img_size, self.img_size), device=config.DEVICE
+            )
+
+        x = self.leaky_relu(self.conv_1(self.resize(imgs)))
+        x_label = self.leaky_relu(self.conv_label(labels))
+        x = torch.cat((x, x_label), dim=1)
+        x = self.leaky_relu(self.bn_2(self.conv_2(x)))
+        x = self.leaky_relu(self.bn_3(self.conv_3(x)))
+        probs = self.conv_out(x)
+        return probs.view(imgs.size(0), -1)
+
+    @staticmethod
+    def init_weights(m):
+        """Initialize weights and biases
+
+        Args:
+            m (Callable): Module with parameters to be optimized
+        """
+        if (
+            isinstance(m, nn.Linear)
+            or isinstance(m, nn.Conv2d)
+            or isinstance(m, nn.ConvTranspose2d)
+        ):
+            torch.nn.init.normal_(m.weight, mean=0.0, std=0.02)
+            torch.nn.init.constant_(m.bias, 0.0)
+
+    def __str__(self):
+        """Model Name"""
+        return "ConvCDiscriminator"
+
 
 if __name__ == "__main__":
     generator = ConvCGenerator().to(config.DEVICE)
@@ -601,6 +638,6 @@ if __name__ == "__main__":
     cond_class = torch.tensor([1, 2, 3, 4, 5], dtype=torch.int32, device=config.DEVICE)
     output_imgs = generator(sample_zs, cond_class)
     print(str(generator), output_imgs.size())
-    # discriminator = ConvDiscriminator(input_size=(1, 28, 28)).to(config.DEVICE)
-    # probs = discriminator(output_imgs)
-    # print(str(discriminator), probs.size())
+    discriminator = ConvCDiscriminator(input_size=(1, 28, 28)).to(config.DEVICE)
+    probs = discriminator(output_imgs, cond_class)
+    print(str(discriminator), probs.size())

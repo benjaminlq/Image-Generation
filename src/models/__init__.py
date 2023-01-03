@@ -9,6 +9,8 @@ from .gan import (
     CDiscriminator,
     ConvGenerator,
     ConvDiscriminator,
+    ConvCGenerator,
+    ConvCDiscriminator,
 )
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     "CDiscriminator",
     "ConvGenerator",
     "ConvDiscriminator",
+    "ConvCGenerator",
+    "ConvCDiscriminator",
 ]
 
 models = {
@@ -36,7 +40,9 @@ models = {
     "GAN": Generator,
     "CGAN": CGenerator,
     "ConvGAN": ConvGenerator,
+    "ConvCGAN": ConvCGenerator,
     "Discriminator": Discriminator,
     "CDiscriminator": CDiscriminator,
     "ConvDiscriminator": ConvDiscriminator,
+    "ConvCDiscriminator": ConvCDiscriminator,
 }
